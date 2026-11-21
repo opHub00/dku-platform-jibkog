@@ -26,6 +26,9 @@ export const listings: Listing[] = [
     image: "/assets/modern-home.jpg",
     tag: "청약공고",
     tagTone: "navy",
+    lat: 37.5669,
+    lng: 126.8274,
+    district: "서울 강서구",
   },
   {
     id: 3,
@@ -51,5 +54,8 @@ export const listings: Listing[] = [
     image: "/assets/modern-home.jpg",
     tag: "청약공고",
     tagTone: "navy",
+    lat: 37.5978,
+    lng: 126.7069,
+    district: "인천 서구",
   },
 ];

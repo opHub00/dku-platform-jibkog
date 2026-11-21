@@ -19,4 +19,9 @@ export type Listing = {
   urgent?: boolean;
   presale?: PresaleListing;
   complex?: Complex;
+  /** 지도 핀 위치 계산용 위도·경도 */
+  lat?: number;
+  lng?: number;
+  /** 시군구. 예: "서울 서초구" */
+  district?: string;
 };
