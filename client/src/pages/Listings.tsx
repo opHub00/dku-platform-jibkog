@@ -9,6 +9,8 @@ import { toListing } from "@/features/presale/lib/toListing";
 import { formatWonShort } from "@/features/presale/lib/format";
 import { buildDistrictMarkers, projectToMap, spreadPositions, type DistrictMarker, type MapObstacle, type MapPosition } from "@/features/presale/lib/mapProjection";
 import "@/features/presale/presale.css";
+import { useProfile } from "@/features/profile/lib/useProfile";
+import { interestHeadline } from "@/features/profile/lib/profileText";
 
 type ViewMode = "map" | "list";
 
@@ -133,6 +135,7 @@ function MapCanvas({
 }
 
 export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listing) => void }) {
+  const profile = useProfile();
   const [viewMode, setViewMode] = useState<ViewMode>("map");
   const [filter, setFilter] = useState<"all" | ListingType>("all");
   const [tradeListings, setTradeListings] = useState<Listing[]>([]);
@@ -189,7 +192,7 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
 
   return (
     <div className="screen-content">
-      <header className="page-header"><div><p className="eyebrow">내 관심지역</p><h1>서울 · 서초구</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header>
+      <header className="page-header"><div><p className="eyebrow">내 관심지역</p><h1>{interestHeadline(profile.interestRegions)}</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header>
       <main className="listing-main">
         <div className="search-bar"><Search size={16} /><span>지역, 단지명으로 찾아보세요</span><button><SlidersHorizontal size={16} /></button></div>
         <div className="filter-row">{filterOptions.map((option) => <button key={option.id} className={`filter-chip ${filter === option.id ? "active" : ""}`} onClick={() => setFilter(option.id)}>{option.label}<span>{option.id === "all" ? allListings.length : allListings.filter((item) => item.type === option.id).length}</span></button>)}</div>
