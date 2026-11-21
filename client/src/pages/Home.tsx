@@ -38,6 +38,9 @@ import { presaleRepository } from "@/features/presale/api/presaleRepository";
 import { calcFundsBreakdown } from "@/features/presale/lib/funds";
 import { formatWon } from "@/features/presale/lib/format";
 import { toListing } from "@/features/presale/lib/toListing";
+import { RegisterListingFlow } from "@/features/presale/components/RegisterListingFlow";
+import { TrustReportView } from "@/features/presale/components/TrustReportView";
+import type { PresaleListing } from "@/features/presale/types";
 
 const newsItems = [
   { category: "청약 인사이트", title: "11월 셋째 주, 수도권 청약 일정 한눈에 보기", time: "3시간 전" },
@@ -165,7 +168,12 @@ function DetailView({ listing, liked, onBack, onToggleLike, onGoChat }: { listin
 
           <section className="detail-section payment-section"><SectionHeader eyebrow="자금 계획" title="납부 일정" action="내 자금 입력" onAction={() => setShowAi(true)} /><div className="payment-timeline"><div className="payment-step done"><span className="payment-node"><Check size={12} /></span><div><span>계약 시</span><strong>{funds ? formatWon(funds.atContract) : "확인 중"}</strong><small>프리미엄 포함 · 준비 완료</small></div></div><div className="payment-step current"><span className="payment-node" /><div><span>중도금 승계</span><strong>{presale ? formatWon(presale.paidAmount) : "확인 중"}</strong><small>{complex ? `${complex.moveInMonth.slice(0, 4)}. ${complex.moveInMonth.slice(5)} · 납부 내역` : "납부 내역"}</small></div></div><div className="payment-step"><span className="payment-node" /><div><span>잔금 · 입주</span><strong>{funds ? formatWon(funds.remaining) : "확인 중"}</strong><small>{complex ? `${complex.moveInMonth.slice(0, 4)}. ${complex.moveInMonth.slice(5)} · 입주 예정` : "입주 예정"}</small></div></div></div></section>
 
-          <section className="detail-section safety-section"><div className="section-header"><div><p className="eyebrow">집콕 검증 리포트</p><h2>거래 안전도 <span className="score-highlight">82점</span></h2></div><button className="report-link" onClick={() => toast("안전도 산정 기준을 확인했어요")}>산정 기준 <ChevronRight size={14} /></button></div><div className="safety-meter"><div className="meter-track"><span /></div><strong>안전한 편</strong></div><div className="verification-list"><div><span className="check-icon"><Check size={12} /></span><div><b>판매자 본인 인증</b><small>휴대폰·신분증 인증 완료</small></div><StatusPill tone="green">확인 완료</StatusPill></div><div><span className="check-icon"><Check size={12} /></span><div><b>분양계약서</b><small>원본 대조 확인 완료</small></div><StatusPill tone="green">확인 완료</StatusPill></div><div><span className="pending-icon">!</span><div><b>중도금 납부내역</b><small>판매자에게 확인이 필요해요</small></div><StatusPill tone="sand">확인 필요</StatusPill></div></div></section>
+          {presale?.trust && (
+            <TrustReportView
+              report={presale.trust}
+              onShowCriteria={() => toast("안전도 산정 기준을 확인했어요")}
+            />
+          )}
 
           <section className="detail-section document-section"><SectionHeader eyebrow="서류 상태" title="계약 전 꼭 확인할 것" action="전체보기" onAction={() => setShowDoc(true)} /><div className="document-card"><div className="document-icon"><FileCheck2 size={18} /></div><div><strong>확인된 서류 {verifiedDocumentCount} / 4</strong><p>{verifiedDocumentNames || "확인된 서류가 없어요"}</p></div><span className="document-progress"><span /></span></div></section>
 
@@ -195,10 +203,12 @@ function ChatView({ listings: chatListings, onOpenListing }: { listings: Listing
   return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div><button className="icon-button"><Search size={19} /></button></header><main className="chat-main"><button className="ai-thread" onClick={() => toast("AI 상담 스레드를 열었어요")}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>분양권 거래</span><span>{tradeListings.length}개</span></div><div className="chat-list">{tradeListings.slice(0, 2).map((listing, index) => <button key={listing.id} className="chat-row" onClick={() => onOpenListing(listing)}><div className="thread-avatar seller-avatar">{listing.presale?.seller.realName.slice(0, 2) ?? "판매"}</div><div className="thread-copy"><div><strong>{listing.title} · 판매자</strong><StatusPill tone={index === 0 ? "green" : "navy"}>{index === 0 ? "진행중" : "완료"}</StatusPill></div><p>{index === 0 ? "안녕하세요. 문의하신 동·호수 확인했어요." : "계약서류 점검 결과를 확인해보세요."}</p></div><div className="chat-meta"><span>{index === 0 ? "10:42" : "어제"}</span>{index === 0 && <b>2</b>}</div></button>)}</div><div className="chat-tip"><CircleHelp size={17} /><div><strong>거래 채팅은 안심번호로 보호돼요</strong><p>상대방과 주고받은 서류는 계약서류 점검 이력에 저장됩니다.</p></div></div></main></div>;
 }
 
-function FavoritesView({ listings: favoriteListings, onOpenListing }: { listings: Listing[]; onOpenListing: (listing: Listing) => void }) {
+function FavoritesView({ listings: favoriteListings, onOpenListing, onToggleLike, onOpenRegister }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onToggleLike: (listing: Listing) => void; onOpenRegister: () => void }) {
   const [segment, setSegment] = useState<"saved" | "posted">("saved");
   const savedListings = favoriteListings.filter((listing) => listing.liked);
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 공간</p><h1>관심</h1></div><button className="icon-button"><MoreHorizontal size={20} /></button></header><main className="favorites-main"><div className="segment-control"><button className={segment === "saved" ? "active" : ""} onClick={() => setSegment("saved")}>찜한 매물 <span>{savedListings.length}</span></button><button className={segment === "posted" ? "active" : ""} onClick={() => setSegment("posted")}>내가 등록한 매물 <span>1</span></button></div>{segment === "saved" ? <div className="favorite-stack">{savedListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에서 삭제했어요")} />)}</div> : <div className="posted-view"><div className="posted-summary"><div><span className="eyebrow">판매 중인 매물</span><strong>1건</strong><p>관심 있는 구매자와 대화를 시작해보세요.</p></div><div className="posted-chart"><span /><span /><span /><span /><span /></div></div><div className="posted-card"><div className="posted-card-image"><img src="/assets/apt-seoul.webp" alt="" /><StatusPill tone="green">거래중</StatusPill></div><div><div className="listing-meta"><span>서울 서초구 반포동</span><span>조회 24</span></div><h3>래미안 원베일리 84㎡</h3><strong className="listing-price">24억 8,000만</strong><div className="posted-actions"><button onClick={() => toast("등록 매물을 수정할 수 있어요")}>수정</button><button onClick={() => toast("매물 통계를 확인했어요")}>통계 보기</button></div></div></div></div>}<button className="add-listing-button" onClick={() => toast("새 매물 등록 플로우를 준비 중이에요")}><Plus size={18} /><span>{segment === "posted" ? "새 매물 등록하기" : "내 매물 등록하기"}</span><ChevronRight size={16} /></button></main></div>;
+  const postedListings = favoriteListings.filter((listing) => listing.type === "trade");
+  const postedListing = postedListings[0];
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 공간</p><h1>관심</h1></div><button className="icon-button"><MoreHorizontal size={20} /></button></header><main className="favorites-main"><div className="segment-control"><button className={segment === "saved" ? "active" : ""} onClick={() => setSegment("saved")}>찜한 매물 <span>{savedListings.length}</span></button><button className={segment === "posted" ? "active" : ""} onClick={() => setSegment("posted")}>내가 등록한 매물 <span>{postedListings.length}</span></button></div>{segment === "saved" ? <div className="favorite-stack">{savedListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => onToggleLike(listing)} />)}</div> : <div className="posted-view"><div className="posted-summary"><div><span className="eyebrow">판매 중인 매물</span><strong>{postedListings.length}건</strong><p>관심 있는 구매자와 대화를 시작해보세요.</p></div><div className="posted-chart"><span /><span /><span /><span /><span /></div></div>{postedListing && <div className="posted-card" onClick={() => onOpenListing(postedListing)}><div className="posted-card-image"><img src={postedListing.image} alt="" /><StatusPill tone="green">{postedListing.presale?.status === "review" ? "검토중" : "거래중"}</StatusPill></div><div><div className="listing-meta"><span>{postedListing.location}</span><span>조회 24</span></div><h3>{postedListing.title}</h3><strong className="listing-price">{postedListing.price}</strong><div className="posted-actions"><button onClick={(event) => { event.stopPropagation(); toast("등록 매물을 수정할 수 있어요"); }}>수정</button><button onClick={(event) => { event.stopPropagation(); toast("매물 통계를 확인했어요"); }}>통계 보기</button></div></div></div>}</div>}<button className="add-listing-button" onClick={onOpenRegister}><Plus size={18} /><span>{segment === "posted" ? "새 매물 등록하기" : "내 매물 등록하기"}</span><ChevronRight size={16} /></button></main></div>;
 }
 
 function MyView() {
@@ -214,46 +224,93 @@ function MyView() {
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [showRegister, setShowRegister] = useState(false);
   const noticeListings = listings.filter((listing) => listing.type === "notice");
   const [homeListings, setHomeListings] = useState<Listing[]>(noticeListings);
+  const [postedListings, setPostedListings] = useState<Listing[]>([]);
   const [likedIds, setLikedIds] = useState<number[]>(noticeListings.filter((listing) => listing.liked).map((listing) => listing.id));
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      presaleRepository.listListings(),
-      presaleRepository.listComplexes(),
-    ]).then(([presaleListings, complexes]) => {
+    const reloadListings = async () => {
+      const [visiblePresaleListings, allPresaleListings, complexes] = await Promise.all([
+        presaleRepository.listListings(),
+        presaleRepository.listListings({ includeHidden: true }),
+        presaleRepository.listComplexes(),
+      ]);
       if (!active) return;
       const complexById = new Map(complexes.map((complex) => [complex.id, complex]));
-      const tradeListings = presaleListings
-        .map((listing) => {
-          const complex = complexById.get(listing.complexId);
-          return complex ? toListing(listing, complex) : null;
-        })
-        .filter((listing): listing is Listing => listing !== null);
-      setHomeListings([...tradeListings, ...noticeListings]);
-      setLikedIds(tradeListings.filter((listing) => listing.liked).map((listing) => listing.id));
-    });
+      const toUiListings = (presaleListings: PresaleListing[]) =>
+        presaleListings
+          .map((listing) => {
+            const complex = complexById.get(listing.complexId);
+            return complex ? toListing(listing, complex) : null;
+          })
+          .filter((listing): listing is Listing => listing !== null);
+      const visibleTradeListings = toUiListings(visiblePresaleListings);
+      const allTradeListings = toUiListings(allPresaleListings);
+      setHomeListings([...visibleTradeListings, ...noticeListings]);
+      setPostedListings(allTradeListings);
+      setLikedIds([
+        ...allTradeListings.filter((listing) => listing.liked).map((listing) => listing.id),
+        ...noticeListings.filter((listing) => listing.liked).map((listing) => listing.id),
+      ]);
+    };
+    void reloadListings();
+    const unsubscribe = presaleRepository.subscribe(() => void reloadListings());
     return () => {
       active = false;
+      unsubscribe();
     };
   }, []);
 
   const openListing = (listing: Listing) => setSelectedListing(listing);
+  const toggleListingLike = (listing: Listing) => {
+    if (listing.type === "trade") {
+      void presaleRepository.toggleLike(listing.id).then((updated) => {
+        setLikedIds((current) => updated.liked
+          ? [...current.filter((id) => id !== updated.id), updated.id]
+          : current.filter((id) => id !== updated.id));
+        toast(updated.liked ? "관심 매물에 저장했어요" : "관심 매물에서 삭제했어요");
+      });
+      return;
+    }
+    setLikedIds((current) => current.includes(listing.id)
+      ? current.filter((id) => id !== listing.id)
+      : [...current, listing.id]);
+    toast(likedIds.includes(listing.id) ? "관심 매물에서 삭제했어요" : "관심 매물에 저장했어요");
+  };
   const toggleLike = () => {
-    if (!selectedListing) return;
-    setLikedIds((current) => current.includes(selectedListing.id) ? current.filter((id) => id !== selectedListing.id) : [...current, selectedListing.id]);
-    toast(likedIds.includes(selectedListing.id) ? "관심 매물에서 삭제했어요" : "관심 매물에 저장했어요");
+    if (selectedListing) toggleListingLike(selectedListing);
   };
   const goChat = () => { setSelectedListing(null); setActiveTab("chat"); };
   const goListings = () => { setSelectedListing(null); setActiveTab("listings"); };
+  const openRegister = () => setShowRegister(true);
+  const handleRegistered = async (created: PresaleListing) => {
+    const complex = await presaleRepository.getComplex(created.complexId);
+    if (!complex) return;
+    setShowRegister(false);
+    setActiveTab("favorites");
+    setSelectedListing(toListing(created, complex));
+  };
+
+  if (showRegister) {
+    return (
+      <div className="app-frame">
+        <RegisterListingFlow
+          onClose={() => setShowRegister(false)}
+          onRegistered={(created) => void handleRegistered(created)}
+        />
+      </div>
+    );
+  }
 
   if (selectedListing) {
     const currentListing = { ...selectedListing, liked: likedIds.includes(selectedListing.id) };
     return <div className="app-frame"><DetailView listing={currentListing} liked={currentListing.liked ?? false} onBack={() => setSelectedListing(null)} onToggleLike={toggleLike} onGoChat={goChat} /></div>;
   }
 
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listings={homeListings} onOpenListing={openListing} /> : activeTab === "favorites" ? <FavoritesView listings={homeListings} onOpenListing={openListing} /> : <MyView />;
+  const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listings={homeListings} onOpenListing={openListing} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} /> : <MyView />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={setActiveTab} /></div>;
 }
