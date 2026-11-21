@@ -1,5 +1,5 @@
 {
-  "include": ["client/src/**/*"],
+  "include": ["client/src/**/*", "server/**/*"],
   "exclude": ["node_modules", "build", "dist"],
   "compilerOptions": {
     "target": "ES2022",

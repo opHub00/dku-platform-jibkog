@@ -1,3 +1,4 @@
+import { attachSeedTrust } from "../ai/seedTrust";
 import { seedComplexes } from "../data/complexes";
 import { seedListings } from "../data/listings";
 import { isResaleRestricted } from "../lib/resale";
@@ -5,6 +6,7 @@ import type {
   Complex,
   NewPresaleListingInput,
   PresaleListing,
+  TrustReport,
 } from "../types";
 
 /**
@@ -18,6 +20,8 @@ export interface PresaleRepository {
   getListing(id: number): Promise<PresaleListing | null>;
   createListing(input: NewPresaleListingInput): Promise<PresaleListing>;
   toggleLike(id: number): Promise<PresaleListing>;
+  /** 신뢰 검증 결과를 저장한다 */
+  saveTrust(id: number, trust: TrustReport): Promise<PresaleListing>;
   /** 매물이 바뀌면 listener를 호출한다. 반환값으로 구독을 해제한다. */
   subscribe(listener: () => void): () => void;
 }
@@ -29,7 +33,8 @@ export class PresaleRepositoryError extends Error {
   }
 }
 
-const STORAGE_KEY = "zipcok.presale.listings.v1";
+// v2: 시드 매물에 신뢰 검증 결과(trust)를 붙이면서 키를 올렸다.
+const STORAGE_KEY = "zipcok.presale.listings.v2";
 
 function isPresaleListingArray(value: unknown): value is PresaleListing[] {
   return (
@@ -81,7 +86,7 @@ export function createLocalStoragePresaleRepository(
       }
     }
     if (memory === null) {
-      memory = clone(seedListings);
+      memory = attachSeedTrust(clone(seedListings), seedComplexes);
       save(memory, false);
     }
     return memory;
@@ -159,6 +164,17 @@ export function createLocalStoragePresaleRepository(
       };
       save([...listings, created]);
       return clone(created);
+    },
+
+    async saveTrust(id, trust) {
+      const listings = load();
+      const target = listings.find((l) => l.id === id);
+      if (!target) {
+        throw new PresaleRepositoryError("매물을 찾을 수 없어요");
+      }
+      const updated: PresaleListing = { ...target, trust: clone(trust) };
+      save(listings.map((l) => (l.id === id ? updated : l)));
+      return clone(updated);
     },
 
     async toggleLike(id) {
