@@ -175,7 +175,7 @@ function DetailView({ listing, liked, onBack, onToggleLike, onGoChat }: { listin
             />
           )}
 
-          <section className="detail-section document-section"><SectionHeader eyebrow="서류 상태" title="계약 전 꼭 확인할 것" action="전체보기" onAction={() => setShowDoc(true)} /><div className="document-card"><div className="document-icon"><FileCheck2 size={18} /></div><div><strong>확인된 서류 {verifiedDocumentCount} / 4</strong><p>{verifiedDocumentNames || "확인된 서류가 없어요"}</p></div><span className="document-progress"><span /></span></div></section>
+          <section className="detail-section document-section"><SectionHeader eyebrow="서류 상태" title="계약 전 꼭 확인할 것" action="전체보기" onAction={() => setShowDoc(true)} /><div className="document-card"><div className="document-icon"><FileCheck2 size={18} /></div><div><strong>확인된 서류 {verifiedDocumentCount} / 3</strong><p>{verifiedDocumentNames || "확인된 서류가 없어요"}</p></div><span className="document-progress"><span /></span></div></section>
 
           <section className="seller-card"><div className="seller-avatar-large">{sellerInitial}</div><div className="seller-copy"><p className="eyebrow">매도자 신뢰도</p><strong>{presale ? `${presale.seller.identityVerified ? "안심 판매자" : "거래 확인 필요 판매자"} · ${presale.seller.nickname}` : "판매자 확인 중"}</strong><span><ShieldCheck size={12} /> {presale ? `${presale.seller.identityVerified ? "본인 인증" : "본인 인증 필요"} · 거래 이력 ${presale.seller.tradeCount}건` : "판매자 정보를 확인 중이에요"}</span></div><ChevronRight size={16} /></section>
         </> : <>
@@ -233,10 +233,11 @@ export default function Home() {
   useEffect(() => {
     let active = true;
     const reloadListings = async () => {
-      const [visiblePresaleListings, allPresaleListings, complexes] = await Promise.all([
+      const [visiblePresaleListings, allPresaleListings, complexes, currentSeller] = await Promise.all([
         presaleRepository.listListings(),
         presaleRepository.listListings({ includeHidden: true }),
         presaleRepository.listComplexes(),
+        presaleRepository.getCurrentSeller(),
       ]);
       if (!active) return;
       const complexById = new Map(complexes.map((complex) => [complex.id, complex]));
@@ -250,7 +251,12 @@ export default function Home() {
       const visibleTradeListings = toUiListings(visiblePresaleListings);
       const allTradeListings = toUiListings(allPresaleListings);
       setHomeListings([...visibleTradeListings, ...noticeListings]);
-      setPostedListings(allTradeListings);
+      setPostedListings(
+        allTradeListings.filter(
+          (listing) =>
+            listing.presale?.seller.realName === currentSeller.realName,
+        ),
+      );
       setLikedIds([
         ...allTradeListings.filter((listing) => listing.liked).map((listing) => listing.id),
         ...noticeListings.filter((listing) => listing.liked).map((listing) => listing.id),

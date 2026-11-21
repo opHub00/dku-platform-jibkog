@@ -53,7 +53,7 @@ export function ListingCard({
                     (document) => document.status === "verified",
                   ).length
                 : 0}
-              /4 확인
+              /3 확인
             </span>
           </div>
         )}
