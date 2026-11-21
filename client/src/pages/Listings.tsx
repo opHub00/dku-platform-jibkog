@@ -7,7 +7,7 @@ import { ListingCard } from "@/components/common/ListingCard";
 import { presaleRepository } from "@/features/presale/api/presaleRepository";
 import { toListing } from "@/features/presale/lib/toListing";
 import { formatWonShort } from "@/features/presale/lib/format";
-import { buildDistrictMarkers, projectToMap, spreadPositions, type DistrictMarker, type MapPosition } from "@/features/presale/lib/mapProjection";
+import { buildDistrictMarkers, projectToMap, spreadPositions, type DistrictMarker, type MapObstacle, type MapPosition } from "@/features/presale/lib/mapProjection";
 import "@/features/presale/presale.css";
 
 type ViewMode = "map" | "list";
@@ -29,6 +29,19 @@ const TOGGLE_SPACE = 44;
 const SCALE_SPACE = 34;
 const PIN_HALF = { width: 32, height: 24 };
 const PIN_MIN_DISTANCE = 52;
+/** index.css .map-current: left 49%, top 52%, 22px 원. 핀·원이 이 점을 가리지 않게 피한다 */
+const CURRENT_DOT = { left: 0.49, top: 0.52, size: 22 };
+/** 핀 중심에서 꼬리 끝까지의 대략 반경 + 여유 */
+const PIN_RADIUS = 30;
+
+function currentDotObstacle(size: { width: number; height: number }, markerRadius: number): MapObstacle {
+  const half = CURRENT_DOT.size / 2;
+  return {
+    x: size.width * CURRENT_DOT.left + half,
+    y: size.height * CURRENT_DOT.top + half,
+    radius: markerRadius + half + 4,
+  };
+}
 
 function regionBubbleSize(count: number): number {
   return Math.min(96, 72 + (count - 1) * 8);
@@ -82,7 +95,7 @@ function MapCanvas({
       bottom: SCALE_SPACE + PIN_HALF.height,
       left: PIN_HALF.width,
     },
-  });
+  }, [currentDotObstacle(size, PIN_RADIUS)]);
   const pinPositionByKey = new Map(
     located.map((listing, index) => [`${listing.type}-${listing.id}`, pinPositions[index]]),
   );
@@ -95,6 +108,7 @@ function MapCanvas({
       ...size,
       padding: { top: TOGGLE_SPACE + bubbleHalf, right: bubbleHalf, bottom: SCALE_SPACE + bubbleHalf, left: bubbleHalf },
     },
+    [currentDotObstacle(size, largestBubble / 2)],
   );
   return (
     <div className="map-canvas" ref={canvasRef}>
