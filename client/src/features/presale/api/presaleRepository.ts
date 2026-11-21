@@ -6,8 +6,13 @@ import type {
   Complex,
   NewPresaleListingInput,
   PresaleListing,
+  Seller,
   TrustReport,
 } from "../types";
+import { currentSeller } from "../data/currentSeller";
+
+/** 이 점수 미만이면 등록 후 바로 노출하지 않고 검토 대기로 둔다 */
+export const REVIEW_THRESHOLD_SCORE = 50;
 
 /**
  * 분양권 데이터 저장소 인터페이스.
@@ -16,9 +21,16 @@ import type {
 export interface PresaleRepository {
   listComplexes(): Promise<Complex[]>;
   getComplex(id: string): Promise<Complex | null>;
-  listListings(): Promise<PresaleListing[]>;
+  /** 기본으로 검토 대기(review) 매물은 빼고 돌려준다 */
+  listListings(options?: { includeHidden?: boolean }): Promise<PresaleListing[]>;
   getListing(id: number): Promise<PresaleListing | null>;
-  createListing(input: NewPresaleListingInput): Promise<PresaleListing>;
+  /** trust 점수가 REVIEW_THRESHOLD_SCORE 미만이면 status "review"로 저장한다 */
+  createListing(
+    input: NewPresaleListingInput,
+    options?: { trust?: TrustReport },
+  ): Promise<PresaleListing>;
+  /** 지금 로그인한 판매자(더미) */
+  getCurrentSeller(): Promise<Seller>;
   toggleLike(id: number): Promise<PresaleListing>;
   /** 신뢰 검증 결과를 저장한다 */
   saveTrust(id: number, trust: TrustReport): Promise<PresaleListing>;
@@ -130,11 +142,15 @@ export function createLocalStoragePresaleRepository(
       return complex ? clone(complex) : null;
     },
 
-    async listListings() {
-      const listings = [...load()].sort((a, b) =>
-        b.createdAt.localeCompare(a.createdAt),
-      );
+    async listListings(options) {
+      const listings = load()
+        .filter((l) => options?.includeHidden || l.status !== "review")
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       return clone(listings);
+    },
+
+    async getCurrentSeller() {
+      return clone(currentSeller);
     },
 
     async getListing(id) {
@@ -142,7 +158,7 @@ export function createLocalStoragePresaleRepository(
       return listing ? clone(listing) : null;
     },
 
-    async createListing(input) {
+    async createListing(input, options) {
       const complex = findComplex(input.complexId);
       if (!complex) {
         throw new PresaleRepositoryError("단지 정보를 찾을 수 없어요");
@@ -155,12 +171,16 @@ export function createLocalStoragePresaleRepository(
 
       const listings = load();
       const nextId = listings.reduce((max, l) => Math.max(max, l.id), 0) + 1;
+      const trust = options?.trust;
       const created: PresaleListing = {
         ...clone(input),
         id: nextId,
-        status: "selling",
+        // 신뢰 점수가 기준 미만이면 검토 대기로 두고 목록에 노출하지 않는다.
+        status:
+          trust && trust.score < REVIEW_THRESHOLD_SCORE ? "review" : "selling",
         liked: false,
         createdAt: new Date().toISOString(),
+        ...(trust ? { trust: clone(trust) } : {}),
       };
       save([...listings, created]);
       return clone(created);

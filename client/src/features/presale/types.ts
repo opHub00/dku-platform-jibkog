@@ -44,7 +44,8 @@ export type PresaleDocument = {
   status: PresaleDocumentStatus;
 };
 
-export type PresaleListingStatus = "selling" | "reserved" | "sold";
+/** review: 신뢰 점수가 낮아 검토 대기(목록에 노출 안 함) */
+export type PresaleListingStatus = "selling" | "reserved" | "sold" | "review";
 
 export type PresaleListing = {
   id: number;
