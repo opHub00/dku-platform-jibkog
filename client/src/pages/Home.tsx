@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ArrowLeft,
   Bell,
@@ -10,7 +10,6 @@ import {
   CircleHelp,
   FileCheck2,
   Heart,
-  Map,
   MapPin,
   MessageCircle,
   MoreHorizontal,
@@ -27,68 +26,14 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { Tab, ListingType, Listing } from "@/types";
+import type { Tab, Listing } from "@/types";
+import { listings } from "@/data/listings";
 import { Logo } from "@/components/common/Logo";
 import { StatusPill } from "@/components/common/StatusPill";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { BottomNav } from "@/components/common/BottomNav";
 import { ListingCard } from "@/components/common/ListingCard";
-
-type ViewMode = "map" | "list";
-
-const listings: Listing[] = [
-  {
-    id: 1,
-    type: "trade",
-    title: "래미안 원베일리 84㎡",
-    location: "서울 서초구 반포동",
-    price: "24억 8,000만",
-    detail: "입주 예정 2027. 08 · 프리미엄 3.2억",
-    date: "방금 전",
-    image: "/assets/apt-seoul.webp",
-    tag: "분양권 거래",
-    tagTone: "green",
-    liked: true,
-    urgent: true,
-  },
-  {
-    id: 2,
-    type: "notice",
-    title: "마곡나루역 오피스텔 청약",
-    location: "서울 강서구 마곡동",
-    price: "청약 예정",
-    detail: "신청 11. 24 ~ 11. 26 · 총 512세대",
-    date: "오늘",
-    image: "/assets/modern-home.jpg",
-    tag: "청약공고",
-    tagTone: "navy",
-  },
-  {
-    id: 3,
-    type: "trade",
-    title: "과천 디에트르 퍼스티지 59㎡",
-    location: "경기 과천시 별양동",
-    price: "12억 4,000만",
-    detail: "입주 예정 2026. 10 · 프리미엄 1.1억",
-    date: "어제",
-    image: "/assets/apt-city.jpg",
-    tag: "분양권 거래",
-    tagTone: "green",
-    liked: true,
-  },
-  {
-    id: 4,
-    type: "notice",
-    title: "검단신도시 AA21블록",
-    location: "인천 서구 원당동",
-    price: "청약 예정",
-    detail: "신청 11. 27 ~ 11. 29 · 총 1,122세대",
-    date: "어제",
-    image: "/assets/modern-home.jpg",
-    tag: "청약공고",
-    tagTone: "navy",
-  },
-];
+import { ListingsView } from "@/pages/Listings";
 
 const newsItems = [
   { category: "청약 인사이트", title: "11월 셋째 주, 수도권 청약 일정 한눈에 보기", time: "3시간 전" },
@@ -158,49 +103,6 @@ function HomeView({ onOpenListing, onGoListings, onGoChat }: { onOpenListing: (l
         </section>
 
         <button className="chat-fab" onClick={onGoChat}><Bot size={17} /><span>AI 상담</span></button>
-      </main>
-    </div>
-  );
-}
-
-function MapCanvas({ filteredListings, onOpenListing }: { filteredListings: Listing[]; onOpenListing: (listing: Listing) => void }) {
-  const pinPositions = [
-    { left: "19%", top: "26%" },
-    { left: "56%", top: "21%" },
-    { left: "72%", top: "55%" },
-    { left: "36%", top: "68%" },
-  ];
-  return (
-    <div className="map-canvas">
-      <div className="map-grid" />
-      <div className="map-water water-one" /><div className="map-water water-two" />
-      <div className="map-road road-one" /><div className="map-road road-two" /><div className="map-road road-three" />
-      <div className="map-label label-one">반포대로</div><div className="map-label label-two">잠원동</div><div className="map-label label-three">고속터미널</div><div className="map-label label-four">서초</div>
-      {filteredListings.map((listing, index) => {
-        const position = pinPositions[index % pinPositions.length];
-        return <button key={listing.id} className={`map-pin ${listing.type === "trade" ? "trade-pin" : "notice-pin"}`} style={position} onClick={() => onOpenListing(listing)}><span>{listing.type === "trade" ? "거래" : "청약"}</span><b>{listing.type === "trade" ? listing.price.split(" ")[0] : "공고"}</b></button>;
-      })}
-      <div className="map-current"><span /></div>
-      <div className="map-scale">현재 위치 기준 · 1.2km</div>
-    </div>
-  );
-}
-
-function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listing) => void }) {
-  const [viewMode, setViewMode] = useState<ViewMode>("map");
-  const [filter, setFilter] = useState<"all" | ListingType>("all");
-  const filteredListings = useMemo(() => filter === "all" ? listings : listings.filter((item) => item.type === filter), [filter]);
-  const filterOptions = [{ id: "all" as const, label: "전체" }, { id: "notice" as const, label: "청약공고" }, { id: "trade" as const, label: "분양권거래" }];
-
-  return (
-    <div className="screen-content">
-      <header className="page-header"><div><p className="eyebrow">내 관심지역</p><h1>서울 · 서초구</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header>
-      <main className="listing-main">
-        <div className="search-bar"><Search size={16} /><span>지역, 단지명으로 찾아보세요</span><button><SlidersHorizontal size={16} /></button></div>
-        <div className="filter-row">{filterOptions.map((option) => <button key={option.id} className={`filter-chip ${filter === option.id ? "active" : ""}`} onClick={() => setFilter(option.id)}>{option.label}<span>{option.id === "all" ? listings.length : listings.filter((item) => item.type === option.id).length}</span></button>)}</div>
-        <div className="listing-toolbar"><span><strong>{filteredListings.length}개</strong>의 매물이 있어요</span><div className="view-toggle"><button className={viewMode === "map" ? "active" : ""} onClick={() => setViewMode("map")}><Map size={15} />지도</button><button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")}><MoreHorizontal size={15} />목록</button></div></div>
-        {viewMode === "map" ? <MapCanvas filteredListings={filteredListings} onOpenListing={onOpenListing} /> : <div className="listing-stack">{filteredListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} />)}</div>}
-        {viewMode === "map" && <div className="map-bottom-list"><div className="map-bottom-heading"><span>지도에서 보고 있는 매물</span><button onClick={() => setViewMode("list")}>목록으로 <ChevronRight size={14} /></button></div>{filteredListings.slice(0, 2).map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} compact />)}</div>}
       </main>
     </div>
   );
