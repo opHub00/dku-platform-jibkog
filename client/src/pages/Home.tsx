@@ -10,7 +10,6 @@ import {
   CircleHelp,
   FileCheck2,
   Heart,
-  Home as HomeIcon,
   Map,
   MapPin,
   MessageCircle,
@@ -28,25 +27,14 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import type { Tab, ListingType, Listing } from "@/types";
+import { Logo } from "@/components/common/Logo";
+import { StatusPill } from "@/components/common/StatusPill";
+import { SectionHeader } from "@/components/common/SectionHeader";
+import { BottomNav } from "@/components/common/BottomNav";
+import { ListingCard } from "@/components/common/ListingCard";
 
-type Tab = "home" | "listings" | "chat" | "favorites" | "my";
-type ListingType = "trade" | "notice";
 type ViewMode = "map" | "list";
-
-type Listing = {
-  id: number;
-  type: ListingType;
-  title: string;
-  location: string;
-  price: string;
-  detail: string;
-  date: string;
-  image: string;
-  tag: string;
-  tagTone: "green" | "navy" | "sand";
-  liked?: boolean;
-  urgent?: boolean;
-};
 
 const listings: Listing[] = [
   {
@@ -107,74 +95,6 @@ const newsItems = [
   { category: "시장 브리핑", title: "분양권 거래량이 다시 움직이기 시작한 지역 3곳", time: "어제" },
   { category: "알아두면 좋은 것", title: "계약 전 확인해야 할 옵션·중도금 체크리스트", time: "11. 17" },
 ];
-
-function Logo() {
-  return (
-    <div className="brand-lockup">
-      <div className="brand-mark" aria-hidden="true"><span /></div>
-      <span className="brand-name">집콕</span>
-    </div>
-  );
-}
-
-function StatusPill({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "green" | "navy" | "sand" }) {
-  return <span className={`status-pill status-${tone}`}>{children}</span>;
-}
-
-function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
-  const items: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "home", label: "홈", icon: <HomeIcon size={19} /> },
-    { id: "listings", label: "매물", icon: <MapPin size={19} /> },
-    { id: "chat", label: "채팅", icon: <MessageCircle size={19} /> },
-    { id: "favorites", label: "관심", icon: <Heart size={19} /> },
-    { id: "my", label: "MY", icon: <UserRound size={19} /> },
-  ];
-
-  return (
-    <nav className="bottom-nav" aria-label="주요 메뉴">
-      {items.map((item) => (
-        <button key={item.id} className={`nav-item ${active === item.id ? "active" : ""}`} onClick={() => onChange(item.id)}>
-          <span className="nav-icon">{item.icon}</span>
-          <span>{item.label}</span>
-          {item.id === "chat" && <span className="nav-dot" />}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-function SectionHeader({ eyebrow, title, action, onAction }: { eyebrow?: string; title: string; action?: string; onAction?: () => void }) {
-  return (
-    <div className="section-header">
-      <div>
-        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-        <h2>{title}</h2>
-      </div>
-      {action && <button className="text-action" onClick={onAction}>{action}<ChevronRight size={15} /></button>}
-    </div>
-  );
-}
-
-function ListingCard({ listing, onOpen, onToggleLike, compact = false }: { listing: Listing; onOpen: () => void; onToggleLike: () => void; compact?: boolean }) {
-  return (
-    <article className={`listing-card ${compact ? "compact" : ""}`} onClick={onOpen}>
-      <div className="listing-image-wrap">
-        <img src={listing.image} alt="" className="listing-image" />
-        <StatusPill tone={listing.tagTone}>{listing.tag}</StatusPill>
-        <button className={`image-heart ${listing.liked ? "liked" : ""}`} onClick={(event) => { event.stopPropagation(); onToggleLike(); }} aria-label="찜하기">
-          <Heart size={16} fill={listing.liked ? "currentColor" : "none"} />
-        </button>
-      </div>
-      <div className="listing-copy">
-        <div className="listing-meta"><span>{listing.location}</span><span>{listing.date}</span></div>
-        <h3>{listing.title}</h3>
-        <p className="listing-price">{listing.price}</p>
-        {listing.type === "trade" && <div className="listing-trade-summary"><span>총 필요자금 23.1억</span><span>서류 3/4 확인</span></div>}
-        <p className="listing-detail">{listing.detail}</p>
-      </div>
-    </article>
-  );
-}
 
 function HomeView({ onOpenListing, onGoListings, onGoChat }: { onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
   return (
