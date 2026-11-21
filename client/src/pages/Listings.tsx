@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
-import { ChevronRight, Map, MoreHorizontal, Search, SlidersHorizontal } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronRight, Map as MapIcon, MoreHorizontal, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import type { Listing, ListingType } from "@/types";
 import { listings } from "@/data/listings";
 import { ListingCard } from "@/components/common/ListingCard";
+import { presaleRepository } from "@/features/presale/api/presaleRepository";
+import { toListing } from "@/features/presale/lib/toListing";
 
 type ViewMode = "map" | "list";
 
@@ -39,7 +41,35 @@ function MapCanvas({
 export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listing) => void }) {
   const [viewMode, setViewMode] = useState<ViewMode>("map");
   const [filter, setFilter] = useState<"all" | ListingType>("all");
-  const filteredListings = useMemo(() => filter === "all" ? listings : listings.filter((item) => item.type === filter), [filter]);
+  const [tradeListings, setTradeListings] = useState<Listing[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      presaleRepository.listListings(),
+      presaleRepository.listComplexes(),
+    ]).then(([presaleListings, complexes]) => {
+      if (!active) return;
+      const complexById = new Map(complexes.map((complex) => [complex.id, complex]));
+      setTradeListings(
+        presaleListings
+          .map((listing) => {
+            const complex = complexById.get(listing.complexId);
+            return complex ? toListing(listing, complex) : null;
+          })
+          .filter((listing): listing is Listing => listing !== null),
+      );
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const allListings = useMemo(
+    () => [...tradeListings, ...listings.filter((item) => item.type === "notice")],
+    [tradeListings],
+  );
+  const filteredListings = useMemo(() => filter === "all" ? allListings : allListings.filter((item) => item.type === filter), [filter, allListings]);
   const filterOptions = [{ id: "all" as const, label: "전체" }, { id: "notice" as const, label: "청약공고" }, { id: "trade" as const, label: "분양권거래" }];
 
   return (
@@ -47,8 +77,8 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
       <header className="page-header"><div><p className="eyebrow">내 관심지역</p><h1>서울 · 서초구</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header>
       <main className="listing-main">
         <div className="search-bar"><Search size={16} /><span>지역, 단지명으로 찾아보세요</span><button><SlidersHorizontal size={16} /></button></div>
-        <div className="filter-row">{filterOptions.map((option) => <button key={option.id} className={`filter-chip ${filter === option.id ? "active" : ""}`} onClick={() => setFilter(option.id)}>{option.label}<span>{option.id === "all" ? listings.length : listings.filter((item) => item.type === option.id).length}</span></button>)}</div>
-        <div className="listing-toolbar"><span><strong>{filteredListings.length}개</strong>의 매물이 있어요</span><div className="view-toggle"><button className={viewMode === "map" ? "active" : ""} onClick={() => setViewMode("map")}><Map size={15} />지도</button><button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")}><MoreHorizontal size={15} />목록</button></div></div>
+        <div className="filter-row">{filterOptions.map((option) => <button key={option.id} className={`filter-chip ${filter === option.id ? "active" : ""}`} onClick={() => setFilter(option.id)}>{option.label}<span>{option.id === "all" ? allListings.length : allListings.filter((item) => item.type === option.id).length}</span></button>)}</div>
+        <div className="listing-toolbar"><span><strong>{filteredListings.length}개</strong>의 매물이 있어요</span><div className="view-toggle"><button className={viewMode === "map" ? "active" : ""} onClick={() => setViewMode("map")}><MapIcon size={15} />지도</button><button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")}><MoreHorizontal size={15} />목록</button></div></div>
         {viewMode === "map" ? <MapCanvas filteredListings={filteredListings} onOpenListing={onOpenListing} /> : <div className="listing-stack">{filteredListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} />)}</div>}
         {viewMode === "map" && <div className="map-bottom-list"><div className="map-bottom-heading"><span>지도에서 보고 있는 매물</span><button onClick={() => setViewMode("list")}>목록으로 <ChevronRight size={14} /></button></div>{filteredListings.slice(0, 2).map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} compact />)}</div>}
       </main>

@@ -2,6 +2,8 @@ export type Tab = "home" | "listings" | "chat" | "favorites" | "my";
 
 export type ListingType = "trade" | "notice";
 
+import type { Complex, PresaleListing } from "@/features/presale/types";
+
 export type Listing = {
   id: number;
   type: ListingType;
@@ -15,4 +17,6 @@ export type Listing = {
   tagTone: "green" | "navy" | "sand";
   liked?: boolean;
   urgent?: boolean;
+  presale?: PresaleListing;
+  complex?: Complex;
 };

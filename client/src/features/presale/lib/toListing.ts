@@ -23,5 +23,7 @@ export function toListing(
     tag: "분양권 거래",
     tagTone: "green",
     liked: listing.liked,
+    presale: listing,
+    complex,
   };
 }
