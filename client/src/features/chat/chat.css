@@ -1,0 +1,51 @@
+/*
+ * 분양권 거래 채팅(chat) 기능 전용 스타일. 모든 클래스는 ch- 접두사.
+ * 목록은 기존 채팅 탭 클래스(.chat-row 등), 매물 카드는 .document-card, 상태는 StatusPill을 그대로 쓴다.
+ * 색은 index.css의 CSS 변수만 쓴다.
+ */
+
+/* 상단 매물 요약 카드(.document-card를 버튼으로 쓴다) */
+.document-card.ch-listing-card { width: 100%; text-align: left; cursor: pointer; }
+.ch-card-side { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; color: var(--muted); }
+
+.ch-status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.ch-dev-role { display: flex; align-items: center; gap: 6px; margin-left: auto; color: var(--muted); font-size: 9px; }
+
+/* 메시지 */
+.ch-messages { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.ch-row { display: flex; align-items: flex-end; gap: 6px; max-width: 84%; }
+.ch-row.ch-mine { align-self: flex-end; flex-direction: row-reverse; }
+.ch-bubble { min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 14px 14px 14px 4px; color: var(--ink); background: var(--surface); font-size: 12px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ch-mine .ch-bubble { border-color: var(--sage-dark); border-radius: 14px 14px 4px 14px; color: var(--surface); background: var(--sage-dark); }
+.ch-time { flex: 0 0 auto; color: var(--muted); font-size: 9px; white-space: nowrap; }
+.ch-system { align-self: center; max-width: 90%; margin: 2px 0; padding: 5px 10px; border-radius: 10px; color: var(--sage-dark); background: var(--sage-pale); font-size: 10px; line-height: 1.45; text-align: center; }
+
+/* 가격 제안 카드 */
+.ch-offer { min-width: 0; width: 236px; max-width: 100%; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.ch-mine .ch-offer { border-color: var(--sage); }
+.ch-offer-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.ch-offer-head .eyebrow { margin: 0; }
+.ch-offer > strong { display: block; margin: 8px 0 4px; color: var(--ink); font-size: 18px; font-weight: 850; letter-spacing: -.05em; }
+.ch-offer > p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.ch-offer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 11px; }
+.ch-offer-actions button { min-height: 36px; border-radius: 10px; font-size: 11px; font-weight: 750; cursor: pointer; }
+
+/* 하단 입력창: .detail-actions와 같은 위치 규칙(앱 틀 바닥, 데스크톱은 틀 기준) */
+.ch-composer { position: fixed; bottom: 0; left: 50%; z-index: 12; width: min(100%, 430px); padding: 10px 16px max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); border-top: 1px solid var(--line); background: var(--paper); }
+.ch-input-row { display: flex; align-items: center; gap: 8px; }
+.ch-input { flex: 1; min-width: 0; height: 43px; padding: 0 14px; border: 1px solid var(--line); border-radius: 22px; outline: 0; color: var(--ink); background: var(--surface); font: inherit; font-size: 12px; }
+.ch-input:focus { border-color: var(--sage); }
+.ch-input::placeholder { color: var(--muted); }
+.ch-send { display: flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 43px; height: 43px; border-radius: 50%; color: var(--surface); background: var(--sage-dark); cursor: pointer; }
+.ch-send:disabled { opacity: .45; cursor: not-allowed; }
+.ch-closed { margin: 0; padding: 12px 0; color: var(--muted); font-size: 11px; text-align: center; }
+
+/* 외부 연락 유도 경고 */
+.ch-warning { display: flex; gap: 10px; margin-bottom: 9px; padding: 11px 12px; border-radius: 13px; color: var(--sand); background: var(--sand-pale); }
+.ch-warning > svg { flex: 0 0 auto; margin-top: 1px; }
+.ch-warning strong { display: block; font-size: 11px; }
+.ch-warning p { margin: 3px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.ch-warning-actions { display: flex; gap: 14px; margin-top: 7px; }
+
+/* 채팅 탭 빈 목록 */
+.ch-empty { margin: 0; padding: 22px 0; color: var(--muted); font-size: 11px; line-height: 1.5; text-align: center; }

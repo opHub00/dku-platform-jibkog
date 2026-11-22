@@ -35,6 +35,16 @@ const RISK_RULES: { category: RiskCategory; pattern: RegExp; reason: string }[] 
   },
 ];
 
+/**
+ * 외부 연락 유도(전화번호·카톡 ID 등) 문구를 찾는다. 없으면 null.
+ * 채팅 보내기 전 경고에서도 같은 패턴을 쓴다.
+ */
+export function findExternalContact(text: string): string | null {
+  const rule = RISK_RULES.find((r) => r.category === "external_contact");
+  const match = rule?.pattern.exec(text);
+  return match ? match[0].trim() : null;
+}
+
 /** 카테고리마다 처음 걸린 문장 하나를 기록한다. */
 export function demoScreenDescription(description: string): DescriptionScreening {
   const findings: RiskFinding[] = [];

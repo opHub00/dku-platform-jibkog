@@ -7,7 +7,7 @@ const GAP_ABOVE_BAR = 10;
 
 /** 화면마다 다른 하단 요소. 바텀시트가 열려 있으면 시트 위가 기준이다. */
 const SHEET_SELECTOR = ".app-frame .bottom-sheet";
-const BAR_SELECTOR = ".app-frame .detail-actions, .app-frame .bottom-nav";
+const BAR_SELECTOR = ".app-frame .detail-actions, .app-frame .bottom-nav, .app-frame .ch-composer";
 
 function isShown(element: Element): boolean {
   return element.getClientRects().length > 0;
