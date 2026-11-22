@@ -9,6 +9,7 @@ import {
   ChevronRight,
   CircleHelp,
   FileCheck2,
+  Handshake,
   Heart,
   MapPin,
   MessageCircle,
@@ -39,6 +40,8 @@ import { formatWon } from "@/features/presale/lib/format";
 import { toListing } from "@/features/presale/lib/toListing";
 import { RegisterListingFlow } from "@/features/presale/components/RegisterListingFlow";
 import { TrustReportView } from "@/features/presale/components/TrustReportView";
+import { currentBuyer } from "@/features/presale/data/currentBuyer";
+import { calcMatchSummary } from "@/features/presale/lib/match";
 import type { PresaleListing } from "@/features/presale/types";
 
 function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
@@ -106,10 +109,12 @@ function DetailView({ listing, liked, onBack, onToggleLike, onGoChat }: { listin
   const [showAi, setShowAi] = useState(false);
   const [showDoc, setShowDoc] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
+  const [showMatch, setShowMatch] = useState(false);
   const isTrade = listing.type === "trade";
   const presale = listing.presale;
   const complex = listing.complex;
   const funds = presale ? calcFundsBreakdown(presale) : null;
+  const match = presale && complex ? calcMatchSummary(presale, complex, currentBuyer) : null;
   const verifiedDocumentCount = presale
     ? presale.documents.filter((document) => document.status === "verified").length
     : 0;
@@ -175,11 +180,13 @@ function DetailView({ listing, liked, onBack, onToggleLike, onGoChat }: { listin
         {isTrade && <button className="action-primary" onClick={onGoChat}><MessageCircle size={18} /><span>판매자와 채팅</span></button>}
         <button className="action-ai" onClick={() => setShowAi(true)}><Bot size={18} /><span>{isTrade ? "이 매물 분석하기" : "AI한테 물어보기"}</span></button>
         <button className="action-doc" onClick={() => setShowDoc(true)}><FileCheck2 size={18} /><span>계약서류 AI 점검</span></button>
+        {isTrade && match && <button className="action-match" onClick={() => setShowMatch(true)}><Handshake size={18} /><span>조건 맞춰보기</span></button>}
       </div>
 
       {showOffer && <div className="sheet-backdrop" onClick={() => setShowOffer(false)}><div className="bottom-sheet offer-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="offer-badge"><Tag size={18} /></div><div><span className="eyebrow">안전한 가격 제안</span><h2>판매자에게 제안할 금액을 입력하세요.</h2></div><button onClick={() => setShowOffer(false)}><X size={18} /></button></div><div className="offer-price-box"><span>현재 총 매수가</span><strong>{funds ? formatWon(funds.totalRequired) : "확인 중"}</strong><div><span>내 제안가</span><b>24억 <em>6,000만</em></b></div></div><button className="upload-button" onClick={() => { setShowOffer(false); toast("가격 제안을 판매자에게 보냈어요"); }}>가격 제안 보내기</button><div className="sheet-footnote"><ShieldCheck size={14} /> 상대방에게는 제안가와 메시지만 전달돼요.</div></div></div>}
       {showAi && <div className="sheet-backdrop" onClick={() => setShowAi(false)}><div className="bottom-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="ai-badge"><Bot size={18} /></div><div><span className="eyebrow">집콕 AI 거래 분석</span><h2>{isTrade ? "이 거래, 지금 진행해도 될까요?" : "이 공고, 나에게 맞을까요?"}</h2></div><button onClick={() => setShowAi(false)}><X size={18} /></button></div><div className="question-list"><button onClick={() => toast("AI가 자금 계획을 정리하고 있어요")}>내 자금으로 가능한 거래일까?<ChevronRight size={16} /></button><button onClick={() => toast("AI가 주변 거래가를 비교하고 있어요")}>프리미엄이 적정한지 비교해줘<ChevronRight size={16} /></button><button onClick={() => toast("AI가 계약 리스크를 분석하고 있어요")}>계약할 때 주의할 점은?<ChevronRight size={16} /></button></div><div className="ai-input"><span>매물에 대해 자유롭게 물어보세요</span><button><Send size={16} /></button></div></div></div>}
       {showDoc && <div className="sheet-backdrop" onClick={() => setShowDoc(false)}><div className="bottom-sheet doc-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="doc-badge"><FileCheck2 size={18} /></div><div><span className="eyebrow">서류 안전 점검</span><h2>{isTrade ? "확인할 서류를 선택하세요." : "계약서류를 올려주세요."}</h2></div><button onClick={() => setShowDoc(false)}><X size={18} /></button></div><p>{isTrade ? "분양계약서와 납부확인서를 올리면 집콕 AI가 권리관계와 특약을 먼저 체크해드려요." : "필요 서류와 자격 조건을 AI가 먼저 정리해드려요."}</p><button className="upload-button" onClick={() => toast("파일 선택 기능을 준비 중이에요")}><Plus size={18} />계약서류 업로드</button><div className="sheet-footnote"><ShieldCheck size={14} /> 업로드한 서류는 점검 후 안전하게 삭제돼요.</div></div></div>}
+      {showMatch && match && presale && <div className="sheet-backdrop" onClick={() => setShowMatch(false)}><div className="bottom-sheet match-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="match-badge"><Handshake size={18} /></div><div><span className="eyebrow">거래 조건 맞춰보기</span><h2>{match.rate}% 맞는 거래예요</h2></div><button onClick={() => setShowMatch(false)}><X size={18} /></button></div><div className="trust-compare"><div className="trust-compare-side"><span className="eyebrow">나</span><strong>{currentBuyer.identityVerified ? "본인 인증 완료" : "본인 인증 필요"}</strong><span>거래 이력 {currentBuyer.tradeCount}건</span></div><div className="trust-compare-side"><span className="eyebrow">판매자</span><strong>{presale.seller.identityVerified ? "본인 인증 완료" : "본인 인증 필요"}</strong><span>거래 이력 {presale.seller.tradeCount}건</span></div></div><div className="match-item-list">{match.items.map((item) => <div className={`match-item ${item.status}`} key={item.label}><span className="match-item-icon">{item.status === "match" ? <Check size={12} /> : <X size={12} />}</span><div><b>{item.label}</b><span>나 {item.buyerValue} · 상대 {item.sellerValue}</span></div></div>)}</div><button className="upload-button" onClick={() => { setShowMatch(false); onGoChat(); }}>채팅 시작하기</button><div className="sheet-footnote"><ShieldCheck size={14} /> 본인인증 정보는 서로에게 요약해서만 보여져요.</div></div></div>}
     </div>
   );
 }
