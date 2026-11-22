@@ -2,14 +2,13 @@ import { useState } from "react";
 import { ArrowLeft, Bot, CircleHelp, Send } from "lucide-react";
 import type { ChatThread } from "@/features/chat/types";
 
-export function ChatRoomView({ thread, onBack }: { thread: ChatThread; onBack: () => void }) {
-  const [messages, setMessages] = useState(thread.messages);
+export function ChatRoomView({ thread, onBack, onSend }: { thread: ChatThread; onBack: () => void; onSend: (text: string) => void }) {
   const [draft, setDraft] = useState("");
 
   const send = () => {
     const text = draft.trim();
     if (!text) return;
-    setMessages((prev) => [...prev, { id: `local-${prev.length}`, sender: "me", text, time: "지금" }]);
+    onSend(text);
     setDraft("");
   };
 
@@ -37,7 +36,7 @@ export function ChatRoomView({ thread, onBack }: { thread: ChatThread; onBack: (
       )}
 
       <main className="chatroom-messages">
-        {messages.map((message) => (
+        {thread.messages.map((message) => (
           <div key={message.id} className={`bubble-row ${message.sender}`}>
             <div className="bubble">{message.text}</div>
             <span className="bubble-time">{message.time}</span>
