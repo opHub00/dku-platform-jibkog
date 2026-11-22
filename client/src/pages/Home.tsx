@@ -31,6 +31,11 @@ import type { PresaleListing } from "@/features/presale/types";
 
 function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
+  const [showChatTeaser, setShowChatTeaser] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setShowChatTeaser(false), 3500);
+    return () => clearTimeout(timer);
+  }, []);
   return (
     <div className="screen-content">
       <header className="topbar">
@@ -84,7 +89,10 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
           </div>
         </section>
 
-        <button className="chat-fab" onClick={onGoChat}><Bot size={17} /><span>AI 상담</span></button>
+        <div className="chat-fab-wrap">
+          {showChatTeaser && <div className="chat-fab-teaser">궁금한 점, AI한테 물어보세요</div>}
+          <button className="chat-fab" onClick={onGoChat} aria-label="AI 상담"><Bot size={19} /></button>
+        </div>
       </main>
     </div>
   );
