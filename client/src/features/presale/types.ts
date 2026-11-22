@@ -32,6 +32,18 @@ export type Seller = {
   tradeCount: number;
 };
 
+export type Buyer = {
+  nickname: string;
+  realName: string;
+  identityVerified: boolean;
+  /** 완료된 거래 횟수 */
+  tradeCount: number;
+  /** 구매 희망 최대 예산 */
+  maxBudget: Won;
+  /** 입주 희망월. "YYYY-MM" */
+  desiredMoveInMonth: string;
+};
+
 export type PresaleDocumentType =
   | "salesContract" // 분양계약서
   | "paymentProof" // 납부확인서
