@@ -13,7 +13,6 @@ import {
   MapPin,
   MessageCircle,
   MoreHorizontal,
-  Newspaper,
   Plus,
   Search,
   Send,
@@ -41,12 +40,6 @@ import { toListing } from "@/features/presale/lib/toListing";
 import { RegisterListingFlow } from "@/features/presale/components/RegisterListingFlow";
 import { TrustReportView } from "@/features/presale/components/TrustReportView";
 import type { PresaleListing } from "@/features/presale/types";
-
-const newsItems = [
-  { category: "청약 인사이트", title: "11월 셋째 주, 수도권 청약 일정 한눈에 보기", time: "3시간 전" },
-  { category: "시장 브리핑", title: "분양권 거래량이 다시 움직이기 시작한 지역 3곳", time: "어제" },
-  { category: "알아두면 좋은 것", title: "계약 전 확인해야 할 옵션·중도금 체크리스트", time: "11. 17" },
-];
 
 function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
@@ -93,13 +86,6 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
           <div className="alert-list">
             <div className="alert-row"><span className="alert-dot green-dot" /><div><strong>관심지역에 새 거래가 올라왔어요</strong><p>래미안 원베일리 · 프리미엄 3.2억</p></div><span className="alert-time">10분 전</span></div>
             <div className="alert-row"><span className="alert-dot sand-dot" /><div><strong>청약 일정이 곧 시작돼요</strong><p>마곡나루역 오피스텔 · 11월 24일</p></div><span className="alert-time">어제</span></div>
-          </div>
-        </section>
-
-        <section>
-          <SectionHeader eyebrow="부동산 뉴스" title="오늘의 시장 브리핑" action="더보기" onAction={() => toast("뉴스 전체보기를 준비 중이에요")} />
-          <div className="news-list">
-            {newsItems.map((news, index) => <article className="news-row" key={news.title}><div className={`news-number number-${index + 1}`}>{String(index + 1).padStart(2, "0")}</div><div><span>{news.category}</span><h3>{news.title}</h3><p>{news.time}</p></div><ChevronRight size={16} /></article>)}
           </div>
         </section>
 
