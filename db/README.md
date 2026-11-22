@@ -1,16 +1,40 @@
 # 집콕 데이터베이스
 
-로컬 개발 기준은 SQLite와 Node.js 24다. 별도 패키지 설치 없이 레포 루트에서 실행한다.
+집콕의 청약공고, 분양권 매물, 찜, 거래 채팅 데이터를 PostgreSQL에 저장합니다. 서버에서 매물을 조회할 때는 `listCards`를 사용하면 프론트엔드의 `Listing` 형식으로 받을 수 있습니다.
 
-```sh
-node db/manage.mjs migrate db/local.sqlite
-node db/manage.mjs seed db/local.sqlite
+## 로컬 실행
+
+PostgreSQL 16 이상과 Node.js 24를 사용합니다. 개발용으로 빈 데이터베이스를 만든 뒤, 저장소 최상위 폴더에서 아래 명령을 실행하세요. `DATABASE_URL`의 계정, 비밀번호, DB 이름은 로컬 설정에 맞게 바꿔 주세요.
+
+```powershell
+npm install --prefix db
+$env:DATABASE_URL = 'postgresql://USER:PASSWORD@localhost:5432/jibkog'
+node db/manage.mjs migrate
+node db/manage.mjs seed
 node db/verify.mjs
 ```
 
-migrate는 파일명 순으로 SQL을 적용하고 적용 이력을 같은 트랜잭션에 기록한다. 후속 변경은 다음 번호의 파일로 추가한다. seed는 빈 개발 DB에만 예제 데이터를 추가한다. 같은 시드를 다시 실행해도 기존 데이터를 보존한다. API에서 여는 **각 DB 연결**에 `PRAGMA foreign_keys=ON`을 설정한다.
+- `migrate`는 아직 적용하지 않은 SQL 파일을 순서대로 실행합니다. 여러 사람이 동시에 실행하면 먼저 시작한 마이그레이션이 끝날 때까지 기다립니다.
+- `seed`는 예제 매물 4건과 예나의 찜 2건을 추가합니다. 처음에는 빈 스키마가 필요하고, 같은 시드를 다시 실행해도 데이터가 중복되지 않습니다. 판매자와 채팅, 가격 세부 내역은 테스트용입니다.
+- `verify`는 별도의 테스트 스키마에서 마이그레이션, 시드, 매물 조회와 제약 조건을 검사합니다. 실행 계정에는 스키마 생성 권한이 필요합니다. 검사가 끝나면 테스트 스키마를 삭제합니다.
 
-## ERD
+## 매물 조회
+
+첫 번째 인자로 연결된 `pg.Client` 또는 `pg.Pool`을 전달하세요. 아래 예시에서 `userId`는 서버가 인증한 사용자의 ID입니다.
+
+```js
+import { listCards } from './db/listings.mjs';
+
+const feed = await listCards(db);
+const saved = await listCards(db, { scope: 'favorites', userId });
+const myListings = await listCards(db, { scope: 'mine', userId });
+```
+
+공개 목록은 최근 등록순입니다. 로그인한 사용자의 찜 여부도 표시하려면 `listCards(db, { userId })`를 호출하세요. 검토 대기 매물은 판매자가 자신의 등록 목록에서만 볼 수 있습니다. 청약 접수 기간은 한국 시간 기준이며 시작일과 마감일을 모두 포함합니다.
+
+## 데이터 구조
+
+### 매물과 거래
 
 ```mermaid
 erDiagram
@@ -29,6 +53,8 @@ erDiagram
   trade_chats ||--o{ trade_messages : contains
 ```
 
+### 사용자 설정과 활동
+
 ```mermaid
 erDiagram
   users ||--o{ favorite_districts : selects
@@ -42,31 +68,21 @@ erDiagram
   ai_threads ||--o{ ai_messages : contains
 ```
 
-## 화면과 API 연결
+## 기능별 연동 기준
 
-서버에서는 `db/listings.mjs`의 `listCards`로 main의 Listing 카드 배열을 읽는다. 기본 정렬은 최신 등록순이다. 서버에서 인증한 사용자 ID를 전달하면 카드별 찜 상태가 포함된다.
-
-```js
-import { listCards } from './db/listings.mjs';
-
-const feed = listCards(db);
-const saved = listCards(db, { scope: 'favorites', userId });
-const myListings = listCards(db, { scope: 'mine', userId });
-```
-
-검토 대기 매물은 판매자 본인의 등록 목록에서 확인할 수 있다. 청약 접수 시작일과 마감일은 한국 시간 기준으로 당일을 포함한다.
-
-| 기능 | 읽기·쓰기 규약 |
+| 기능 | 구현할 때 참고할 내용 |
 |---|---|
-| 매물 탭 | 공개 목록은 public_listings를 사용한다. complexes에서 주소·좌표·사진을, districts에서 시군구를 가져온다. 좌표가 비어 있으면 목록에만 표시한다. |
-| 분양권 | 분양가·프리미엄·옵션비·납부액은 원 단위 정수다. 판매 상태와 거래방 상태는 별개다. 내가 등록한 매물은 listings.seller_id로 조회한다. |
-| 관심 | 로그인 사용자와 매물 ID 조합으로 favorites를 조회한다. liked는 사용자마다 계산한다. |
-| 거래 채팅 | 한 매물과 구매자당 한 방이다. API가 인증 사용자와 방의 구매자·판매자를 대조한 뒤 author_role을 정한다. |
-| 서류·신뢰도 | trade_documents는 서류 종류별 현재 상태, trust_reports는 매물 검증 이력이다. report_json에는 프론트 TrustReport 전체를 보관한다. document_checks는 사용자가 별도로 요청한 파일 점검 이력이다. |
-| 청약홈 | notices[].id 및 notice_number는 문자열 쌍으로 식별한다. housing_types는 notice_models에, documents는 notice_documents에 연결한다. 모델번호의 선행 0을 유지하고 만 원은 원으로 환산한다. 조회 실패(null) 시 기존 자식 데이터를 유지한다. |
-| 아파트 실거래가 | apartment_sales는 시군구와 계약일로 조회한다. 외부 거래에 집콕 매물 ID를 추정해 붙이지 않는다. 월별 재수집 시 조회가 완결된 범위만 트랜잭션 안에서 교체한다. |
-| MY·AI | 관심지역·알림 설정·서류점검·AI 대화를 사용자별로 조회한다. membership은 현재 등급을 저장한다. |
+| 매물 지도 | 공개 매물은 `public_listings`에서 조회합니다. 주소·좌표·사진은 `complexes`, 시군구는 `districts`에 있습니다. 좌표가 없는 매물도 목록에는 표시할 수 있습니다. |
+| 분양권 | 분양가, 프리미엄, 옵션비, 납부액은 원 단위 `BIGINT`입니다. 매물 판매 상태와 채팅방 상태는 따로 관리합니다. 판매자 기준 조회에는 `listings.seller_id`를 사용합니다. |
+| 찜 | `favorites`는 사용자 ID와 매물 ID의 조합을 저장합니다. 카드의 `liked` 값은 조회한 사용자에 따라 달라집니다. |
+| 거래 채팅 | 구매자는 매물 하나당 채팅방 하나를 열 수 있습니다. 메시지를 저장할 때 서버에서 로그인한 사용자가 해당 방의 구매자인지 판매자인지 확인하고 `author_role`을 지정하세요. |
+| 서류 점검 | `trade_documents`에는 매물 서류의 현재 상태를 저장합니다. 매물 신뢰도 평가 이력은 `trust_reports`에, 사용자가 직접 요청한 파일 점검 이력은 `document_checks`에 저장합니다. `report_json`에는 프론트엔드의 `TrustReport` 전체가 들어갑니다. |
+| 청약홈 | 주택관리번호와 공고번호를 문자열 쌍으로 관리합니다. 주택형은 `notice_models`, 출처 문서는 `notice_documents`에 연결하세요. 모델번호 앞의 0은 유지하고 만 원 단위 금액은 원으로 바꿔 저장합니다. 조회 결과가 실패를 뜻하는 `null`이면 기존 데이터를 유지하세요. |
+| 아파트 실거래가 | `apartment_sales`는 시군구와 계약일을 기준으로 조회합니다. 집콕 매물과의 연결은 가정하지 않습니다. 월별 데이터를 갱신할 때는 조회가 끝난 범위만 한 트랜잭션에서 교체하세요. |
+| MY·AI | 관심 지역, 알림 설정, 서류 점검 이력, AI 대화는 사용자별로 조회합니다. 현재 회원 등급은 `users.membership`에 저장합니다. |
 
-개발 시드는 main의 매물 4건 및 예나의 찜 2건을 재현한다. 판매자·금액 세부 구성·등록 시각·채팅은 로컬 예시다. 화면의 상대 날짜·가격 문자열·배지 색은 표시할 때 계산한다.
+등록 시각은 `TIMESTAMPTZ`, 청약 접수일은 `DATE`로 저장합니다. 날짜와 금액의 표시 형식, 배지 색상은 매물 카드를 만들 때 결정합니다.
 
-기준 브랜치는 main (6af1898), 분양권 모델은 feature/presale-trade (176a8a5), 외부 데이터 형식은 feature/api (15e5277)다. 이 폴더는 DB 계층만 제공한다. 실제 API 연결, 인증, 공공데이터 수집 작업은 별도 연동 범위다.
+## 참고한 브랜치
+
+화면 데이터는 `main`의 `6af1898`, 분양권 모델은 `feature/presale-trade`의 `176a8a5`, 외부 API 응답 형식은 `feature/api`의 `15e5277`을 기준으로 작성했습니다. 인증, HTTP API, 공공데이터 수집기는 각각 연동이 필요합니다.
