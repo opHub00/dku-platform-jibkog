@@ -1,5 +1,7 @@
 import { Heart } from "lucide-react";
 import type { Listing } from "@/types";
+import { calcTotalRequiredFunds } from "@/features/presale/lib/funds";
+import { formatWon } from "@/features/presale/lib/format";
 import { StatusPill } from "./StatusPill";
 
 export function ListingCard({
@@ -38,8 +40,21 @@ export function ListingCard({
         <p className="listing-price">{listing.price}</p>
         {listing.type === "trade" && (
           <div className="listing-trade-summary">
-            <span>총 필요자금 23.1억</span>
-            <span>서류 3/4 확인</span>
+            <span>
+              총 필요자금{" "}
+              {listing.presale
+                ? formatWon(calcTotalRequiredFunds(listing.presale))
+                : "확인 중"}
+            </span>
+            <span>
+              서류{" "}
+              {listing.presale
+                ? listing.presale.documents.filter(
+                    (document) => document.status === "verified",
+                  ).length
+                : 0}
+              /3 확인
+            </span>
           </div>
         )}
         <p className="listing-detail">{listing.detail}</p>

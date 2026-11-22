@@ -2,9 +2,10 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { defineConfig } from "vite";
+import { aiApiPlugin } from "./server/vitePluginAiApi";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), aiApiPlugin({ envDir: import.meta.dirname })],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),

@@ -1,0 +1,79 @@
+/*
+ * 분양권(presale) 기능 전용 스타일. 모든 클래스는 ps- 접두사.
+ * 기존 index.css 클래스를 먼저 쓰고, 그걸로 안 되는 부분만 여기서 보완한다.
+ * 색은 index.css의 CSS 변수만 쓴다.
+ */
+
+/* ---------- 검증 리포트: 점수에 따른 색 ---------- */
+/* 70점 이상은 기존 디자인(세이지 그라데이션)을 그대로 쓴다. */
+.ps-tone-sand .score-highlight,
+.ps-tone-sand .safety-meter strong { color: var(--sand); }
+.ps-tone-sand .meter-track span { background: var(--sand); }
+
+.ps-tone-danger .score-highlight,
+.ps-tone-danger .safety-meter strong { color: var(--danger); }
+.ps-tone-danger .meter-track span { background: var(--danger); }
+
+.meter-track span.ps-meter-fill { transition: width .4s ease; }
+
+.pending-icon.ps-fail-icon { color: var(--surface); background: var(--danger); }
+.ps-pill-danger .status-pill { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+
+.safety-note.ps-report-note { margin: 0 0 12px; }
+.safety-note.ps-note-sand { color: var(--sand); background: var(--sand-pale); }
+.safety-note.ps-note-danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
+.safety-note.ps-note-sand p,
+.safety-note.ps-note-danger p { color: var(--ink-soft); }
+
+/* ---------- 등록 흐름 ---------- */
+.ps-progress { padding: 0 20px; }
+.ps-progress .meter-track { flex: none; height: 5px; }
+
+.ps-field { margin-bottom: 14px; }
+.ps-label { display: block; margin: 0 0 7px; color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+.ps-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 10px; }
+.ps-grid-2 > * { min-width: 0; }
+
+.search-bar.ps-input-bar:focus-within,
+.ps-textarea:focus { border-color: var(--sage); }
+.ps-input { flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 12px; }
+.ps-input::placeholder,
+.ps-textarea::placeholder { color: var(--muted); }
+.ps-unit { flex: 0 0 auto; color: var(--muted); font-size: 11px; font-weight: 700; font-style: normal; }
+.ps-textarea { display: block; box-sizing: border-box; width: 100%; min-height: 112px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; outline: 0; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; line-height: 1.6; resize: vertical; }
+.ps-hint { margin: 6px 0 0; color: var(--muted); font-size: 10px; }
+.ps-hint.ps-error { color: var(--danger); }
+
+.filter-row.ps-chip-row { padding: 0; }
+
+.alert-list.ps-complex-list { margin-top: 12px; }
+.alert-row.ps-select-row { width: 100%; align-items: center; text-align: left; cursor: pointer; }
+.alert-row.ps-select-row .ai-badge { flex: 0 0 auto; }
+.alert-row.ps-select-row > svg { flex: 0 0 auto; color: var(--sage-dark); }
+.alert-row.ps-select-row.active strong { color: var(--sage-dark); }
+.ps-empty { padding: 26px 0; color: var(--muted); font-size: 11px; text-align: center; }
+.safety-note.ps-complex-note { margin-top: 14px; }
+
+.ps-doc-list { display: flex; flex-direction: column; gap: 8px; }
+.ps-file-label { flex: 0 0 auto; cursor: pointer; }
+.ps-file-label input { display: none; }
+.ps-doc-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+
+.total-funds-card.ps-funds-preview { margin-top: 6px; }
+
+/* AI 검증 진행 단계: 기존 아이콘(20px) 크기에 맞춘 대기·진행 표시 */
+.ps-wait-icon { width: 20px; height: 20px; flex: 0 0 auto; box-sizing: border-box; border: 1.5px solid var(--line); border-radius: 50%; }
+.document-progress.ps-spinner { box-sizing: border-box; width: 20px; height: 20px; flex: 0 0 auto; padding: 2px; border-width: 2px; animation: ps-spin 1s linear infinite; }
+.document-progress.ps-spinner span { border-width: 1.5px; }
+@keyframes ps-spin { to { transform: rotate(395deg); } }
+@media (prefers-reduced-motion: reduce) { .document-progress.ps-spinner { animation: none; } }
+
+/* ---------- 매물 지도: 지역별 거래 ---------- */
+.view-toggle.ps-map-toggle { position: absolute; top: 12px; left: 12px; z-index: 3; box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 10%, transparent); }
+.ps-region-bubble { position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; box-sizing: border-box; padding: 8px; border: 2px solid var(--surface); border-radius: 50%; color: var(--surface); background: color-mix(in srgb, var(--sage) 90%, transparent); box-shadow: 0 4px 10px color-mix(in srgb, var(--sage-dark) 28%, transparent); transform: translate(-50%, -50%); font-size: 9px; line-height: 1.2; text-align: center; word-break: keep-all; cursor: pointer; }
+.ps-region-bubble span { font-weight: 650; }
+.ps-region-bubble b { font-size: 10px; font-weight: 800; }
+.filter-row.ps-region-row { padding-top: 0; }
+
+.ps-actions button { cursor: pointer; }
+.ps-actions button:disabled { opacity: .45; cursor: not-allowed; }
