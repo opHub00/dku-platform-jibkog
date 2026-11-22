@@ -8,6 +8,7 @@ import {
   Check,
   ChevronRight,
   CircleHelp,
+  Calculator,
   FileCheck2,
   Handshake,
   Heart,
@@ -43,6 +44,13 @@ import { TrustReportView } from "@/features/presale/components/TrustReportView";
 import { currentBuyer } from "@/features/presale/data/currentBuyer";
 import { calcMatchSummary } from "@/features/presale/lib/match";
 import { calcRoi } from "@/features/presale/lib/roi";
+import {
+  ACCOUNT_YEARS_OPTIONS,
+  DEPENDENTS_OPTIONS,
+  HOMELESS_YEARS_OPTIONS,
+  SUBSCRIPTION_SCORE_MAX,
+  calcSubscriptionScore,
+} from "@/features/presale/lib/subscriptionScore";
 import type { PresaleListing } from "@/features/presale/types";
 
 function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
@@ -113,12 +121,17 @@ function DetailView({ listing, liked, onBack, onToggleLike, onGoChat }: { listin
   const [showMatch, setShowMatch] = useState(false);
   const [roiMonths, setRoiMonths] = useState(12);
   const [roiGrowth, setRoiGrowth] = useState(0.006);
+  const [showScore, setShowScore] = useState(false);
+  const [homelessYears, setHomelessYears] = useState(3);
+  const [dependents, setDependents] = useState(1);
+  const [accountYears, setAccountYears] = useState(5);
   const isTrade = listing.type === "trade";
   const presale = listing.presale;
   const complex = listing.complex;
   const funds = presale ? calcFundsBreakdown(presale) : null;
   const match = presale && complex ? calcMatchSummary(presale, complex, currentBuyer) : null;
   const roi = presale ? calcRoi(presale, { holdingMonths: roiMonths, monthlyPremiumGrowthRate: roiGrowth }) : null;
+  const score = calcSubscriptionScore({ homelessYears, dependents, accountYears });
   const verifiedDocumentCount = presale
     ? presale.documents.filter((document) => document.status === "verified").length
     : 0;
@@ -174,7 +187,7 @@ function DetailView({ listing, liked, onBack, onToggleLike, onGoChat }: { listin
 
           <section className="seller-card"><div className="seller-avatar-large">{sellerInitial}</div><div className="seller-copy"><p className="eyebrow">매도자 신뢰도</p><strong>{presale ? `${presale.seller.identityVerified ? "안심 판매자" : "거래 확인 필요 판매자"} · ${presale.seller.nickname}` : "판매자 확인 중"}</strong><span><ShieldCheck size={12} /> {presale ? `${presale.seller.identityVerified ? "본인 인증" : "본인 인증 필요"} · 거래 이력 ${presale.seller.tradeCount}건` : "판매자 정보를 확인 중이에요"}</span></div><ChevronRight size={16} /></section>
         </> : <>
-          <div className="detail-stats"><div><span>전용면적</span><strong>59.86㎡</strong></div><div><span>층수</span><strong>최고 29층</strong></div><div><span>등록일</span><strong>{listing.date}</strong></div></div><section className="detail-section"><SectionHeader title="공고 설명" /><p className="detail-description">청약 일정과 자격 조건을 한눈에 확인할 수 있는 공고입니다. 나의 청약 프로필을 기준으로 신청 가능성을 먼저 살펴보고 필요한 서류를 미리 준비해보세요.</p></section><section className="detail-section"><SectionHeader title="주요 정보" /><div className="info-grid"><div><span>입주 예정</span><strong>2028년 2월</strong></div><div><span>분양가</span><strong>8억 2,400만</strong></div><div><span>청약 일정</span><strong>11. 24 ~ 11. 26</strong></div><div><span>공급 규모</span><strong>총 512세대</strong></div></div></section><div className="safety-note"><ShieldCheck size={19} /><div><strong>청약 서류를 미리 준비하세요</strong><p>집콕 AI가 내 프로필 기준 필요 서류를 정리해드려요.</p></div><ChevronRight size={16} /></div>
+          <div className="detail-stats"><div><span>전용면적</span><strong>59.86㎡</strong></div><div><span>층수</span><strong>최고 29층</strong></div><div><span>등록일</span><strong>{listing.date}</strong></div></div><section className="detail-section"><SectionHeader title="공고 설명" /><p className="detail-description">청약 일정과 자격 조건을 한눈에 확인할 수 있는 공고입니다. 나의 청약 프로필을 기준으로 신청 가능성을 먼저 살펴보고 필요한 서류를 미리 준비해보세요.</p></section><section className="detail-section"><SectionHeader title="주요 정보" /><div className="info-grid"><div><span>입주 예정</span><strong>2028년 2월</strong></div><div><span>분양가</span><strong>8억 2,400만</strong></div><div><span>청약 일정</span><strong>11. 24 ~ 11. 26</strong></div><div><span>공급 규모</span><strong>총 512세대</strong></div></div></section><button className="safety-note score-entry" onClick={() => setShowScore(true)}><Calculator size={19} /><div><strong>내 청약 가점 계산하기</strong><p>무주택기간 · 부양가족수 · 통장 가입기간으로 가점을 계산해요.</p></div><ChevronRight size={16} /></button><div className="safety-note"><ShieldCheck size={19} /><div><strong>청약 서류를 미리 준비하세요</strong><p>집콕 AI가 내 프로필 기준 필요 서류를 정리해드려요.</p></div><ChevronRight size={16} /></div>
         </>}
       </main>
 
@@ -203,6 +216,7 @@ function DetailView({ listing, liked, onBack, onToggleLike, onGoChat }: { listin
       </div>}
       <div className="question-list"><button onClick={() => toast("AI가 자금 계획을 정리하고 있어요")}>내 자금으로 가능한 거래일까?<ChevronRight size={16} /></button><button onClick={() => toast("AI가 주변 거래가를 비교하고 있어요")}>프리미엄이 적정한지 비교해줘<ChevronRight size={16} /></button><button onClick={() => toast("AI가 계약 리스크를 분석하고 있어요")}>계약할 때 주의할 점은?<ChevronRight size={16} /></button></div><div className="ai-input"><span>매물에 대해 자유롭게 물어보세요</span><button><Send size={16} /></button></div></div></div>}
       {showDoc && <div className="sheet-backdrop" onClick={() => setShowDoc(false)}><div className="bottom-sheet doc-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="doc-badge"><FileCheck2 size={18} /></div><div><span className="eyebrow">서류 안전 점검</span><h2>{isTrade ? "확인할 서류를 선택하세요." : "계약서류를 올려주세요."}</h2></div><button onClick={() => setShowDoc(false)}><X size={18} /></button></div><p>{isTrade ? "분양계약서와 납부확인서를 올리면 집콕 AI가 권리관계와 특약을 먼저 체크해드려요." : "필요 서류와 자격 조건을 AI가 먼저 정리해드려요."}</p><button className="upload-button" onClick={() => toast("파일 선택 기능을 준비 중이에요")}><Plus size={18} />계약서류 업로드</button><div className="sheet-footnote"><ShieldCheck size={14} /> 업로드한 서류는 점검 후 안전하게 삭제돼요.</div></div></div>}
+      {showScore && <div className="sheet-backdrop" onClick={() => setShowScore(false)}><div className="bottom-sheet score-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="score-badge"><Calculator size={18} /></div><div><span className="eyebrow">청약 가점 계산기</span><h2>{score.total}점 / {SUBSCRIPTION_SCORE_MAX}점</h2></div><button onClick={() => setShowScore(false)}><X size={18} /></button></div><div className="roi-field"><span>무주택기간</span><div className="filter-row">{HOMELESS_YEARS_OPTIONS.map((option) => <button key={option.label} className={`filter-chip ${homelessYears === option.years ? "active" : ""}`} onClick={() => setHomelessYears(option.years)}>{option.label}</button>)}</div></div><div className="roi-field"><span>부양가족수</span><div className="filter-row">{DEPENDENTS_OPTIONS.map((option) => <button key={option.label} className={`filter-chip ${dependents === option.count ? "active" : ""}`} onClick={() => setDependents(option.count)}>{option.label}</button>)}</div></div><div className="roi-field"><span>청약통장 가입기간</span><div className="filter-row">{ACCOUNT_YEARS_OPTIONS.map((option) => <button key={option.label} className={`filter-chip ${accountYears === option.years ? "active" : ""}`} onClick={() => setAccountYears(option.years)}>{option.label}</button>)}</div></div><div className="roi-result"><div><span>무주택기간 점수</span><b>{score.homelessScore}점</b></div><div><span>부양가족수 점수</span><b>{score.dependentsScore}점</b></div><div><span>청약통장 가입기간 점수</span><b>{score.accountScore}점</b></div><div className="roi-highlight"><span>합계</span><strong>{score.total}점 / {SUBSCRIPTION_SCORE_MAX}점</strong></div></div><div className="sheet-footnote"><ShieldCheck size={14} /> 실제 가점은 세대 구성과 지역 기준에 따라 달라질 수 있어요.</div></div></div>}
       {showMatch && match && presale && <div className="sheet-backdrop" onClick={() => setShowMatch(false)}><div className="bottom-sheet match-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="match-badge"><Handshake size={18} /></div><div><span className="eyebrow">거래 조건 맞춰보기</span><h2>{match.rate}% 맞는 거래예요</h2></div><button onClick={() => setShowMatch(false)}><X size={18} /></button></div><div className="trust-compare"><div className="trust-compare-side"><span className="eyebrow">나</span><strong>{currentBuyer.identityVerified ? "본인 인증 완료" : "본인 인증 필요"}</strong><span>거래 이력 {currentBuyer.tradeCount}건</span></div><div className="trust-compare-side"><span className="eyebrow">판매자</span><strong>{presale.seller.identityVerified ? "본인 인증 완료" : "본인 인증 필요"}</strong><span>거래 이력 {presale.seller.tradeCount}건</span></div></div><div className="match-item-list">{match.items.map((item) => <div className={`match-item ${item.status}`} key={item.label}><span className="match-item-icon">{item.status === "match" ? <Check size={12} /> : <X size={12} />}</span><div><b>{item.label}</b><span>나 {item.buyerValue} · 상대 {item.sellerValue}</span></div></div>)}</div><button className="upload-button" onClick={() => { setShowMatch(false); onGoChat(); }}>채팅 시작하기</button><div className="sheet-footnote"><ShieldCheck size={14} /> 본인인증 정보는 서로에게 요약해서만 보여져요.</div></div></div>}
     </div>
   );
