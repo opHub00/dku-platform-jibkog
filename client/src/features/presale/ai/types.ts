@@ -71,12 +71,36 @@ export type ScreenDescriptionRequest = {
   description: string;
 };
 
-export type AiApiResponse<T> = { ok: true; result: T } | { ok: false; error: string };
+export type AiProvider = "gemini" | "anthropic";
+
+/** 실제로 분석한 AI 공급자와 모델 */
+export type AiModelInfo = {
+  provider: AiProvider;
+  model: string;
+};
+
+export const AI_PROVIDER_LABELS: Record<AiProvider, string> = {
+  gemini: "Gemini",
+  anthropic: "Claude",
+};
+
+export type AiApiResponse<T> =
+  | { ok: true; result: T; analyzedBy?: AiModelInfo }
+  | { ok: false; error: string };
 
 export type AiResult<T> = {
   mode: AiMode;
   result: T;
+  /** live일 때 분석한 모델 */
+  analyzedBy?: AiModelInfo;
 };
+
+export function parseAiModelInfo(value: unknown): AiModelInfo | undefined {
+  if (!isRecord(value)) return undefined;
+  const { provider, model } = value;
+  if ((provider !== "gemini" && provider !== "anthropic") || typeof model !== "string" || model === "") return undefined;
+  return { provider, model };
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

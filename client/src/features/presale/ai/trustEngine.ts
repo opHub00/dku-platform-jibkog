@@ -402,6 +402,9 @@ export function evaluateTrust(input: TrustInput): TrustReport {
 
   const usedLive =
     input.screening.mode === "live" || input.contract?.mode === "live";
+  const analyzedBy =
+    (input.contract?.mode === "live" ? input.contract.analyzedBy : undefined) ??
+    (input.screening.mode === "live" ? input.screening.analyzedBy : undefined);
 
   return {
     score,
@@ -411,6 +414,7 @@ export function evaluateTrust(input: TrustInput): TrustReport {
     caps,
     items,
     mode: usedLive ? "live" : "demo",
+    ...(analyzedBy ? { analyzedBy } : {}),
     evaluatedAt: now.toISOString(),
   };
 }

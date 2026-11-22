@@ -1,3 +1,5 @@
+import type { AiModelInfo } from "./ai/types";
+
 /** 금액은 모두 원 단위 정수다. 화면에 보여줄 때만 lib/format.ts로 변환한다. */
 export type Won = number;
 
@@ -120,6 +122,8 @@ export type TrustReport = {
   items: TrustItem[];
   /** AI 결과를 하나라도 실제로 받았으면 "live" */
   mode: "live" | "demo";
+  /** live일 때 분석한 AI 모델(예: Gemini) */
+  analyzedBy?: AiModelInfo;
   evaluatedAt: string;
 };
 

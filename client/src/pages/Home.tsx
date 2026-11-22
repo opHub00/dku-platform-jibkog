@@ -36,7 +36,7 @@ import { ListingCard } from "@/components/common/ListingCard";
 import { ListingsView } from "@/pages/Listings";
 import { presaleRepository } from "@/features/presale/api/presaleRepository";
 import { calcFundsBreakdown } from "@/features/presale/lib/funds";
-import { formatWon } from "@/features/presale/lib/format";
+import { formatRelativeDate, formatWon } from "@/features/presale/lib/format";
 import { toListing } from "@/features/presale/lib/toListing";
 import { RegisterListingFlow } from "@/features/presale/components/RegisterListingFlow";
 import { TrustReportView } from "@/features/presale/components/TrustReportView";
@@ -44,17 +44,25 @@ import type { PresaleListing } from "@/features/presale/types";
 import { useLikedPresaleCount } from "@/features/presale/lib/useLikedPresaleCount";
 import { ProfileForm } from "@/features/profile/components/ProfileForm";
 import { useProfile } from "@/features/profile/lib/useProfile";
-import { greetingName, interestHeadline, profileSummary, shortName } from "@/features/profile/lib/profileText";
+import { greetingName, interestHeadline, profileSummary, regionKey, shortName } from "@/features/profile/lib/profileText";
+import { NewsScreen } from "@/features/news/components/NewsScreen";
+import { sortByNewest, useNews } from "@/features/news/lib/useNews";
+import { NEWS_CATEGORY_LABELS } from "@/features/news/types";
 
-const newsItems = [
-  { category: "청약 인사이트", title: "11월 셋째 주, 수도권 청약 일정 한눈에 보기", time: "3시간 전" },
-  { category: "시장 브리핑", title: "분양권 거래량이 다시 움직이기 시작한 지역 3곳", time: "어제" },
-  { category: "알아두면 좋은 것", title: "계약 전 확인해야 할 옵션·중도금 체크리스트", time: "11. 17" },
-];
+/** 맞춤 뉴스를 불러오는 동안 보여줄 한 줄 */
+const newsLoadingItem = { id: "loading", category: "맞춤 뉴스", title: "관심지역 뉴스를 찾고 있어요", time: "잠시만요", link: "" };
 
-function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
+function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat, onOpenNews }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void; onOpenNews: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
   const profile = useProfile();
+  const { data: newsData } = useNews();
+  const newsItems = newsData
+    ? sortByNewest(newsData.articles).slice(0, 3).map((article) => ({ id: article.id, category: NEWS_CATEGORY_LABELS[article.category], title: article.title, time: formatRelativeDate(article.publishedAt), link: article.link }))
+    : [newsLoadingItem];
+  const firstInterest = profile.interestRegions[0];
+  const firstInterestTradeCount = firstInterest
+    ? tradeListings.filter((listing) => listing.district === regionKey(firstInterest) && listing.presale?.status === "selling").length
+    : 0;
   return (
     <div className="screen-content">
       <header className="topbar">
@@ -81,7 +89,7 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
           <img src="/assets/apt-city.jpg" alt="서울 아파트 전경" />
           <div className="banner-overlay" />
           <div className="banner-content">
-            <div className="banner-top"><StatusPill tone="green">관심지역 추천</StatusPill><span>서초구 · 3건</span></div>
+            <div className="banner-top"><StatusPill tone="green">관심지역 추천</StatusPill><span>{firstInterest ? firstInterest.sigungu : "관심지역"} · {firstInterestTradeCount}건</span></div>
             <h2>반포에서 새로 나온<br />분양권을 확인해보세요.</h2>
             <span className="banner-link">거래 매물 보기 <ChevronRight size={15} /></span>
           </div>
@@ -102,9 +110,9 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
         </section>
 
         <section>
-          <SectionHeader eyebrow="부동산 뉴스" title="오늘의 시장 브리핑" action="더보기" onAction={() => toast("뉴스 전체보기를 준비 중이에요")} />
+          <SectionHeader eyebrow={newsData?.source === "sample" ? "부동산 뉴스 · 샘플 뉴스" : "부동산 뉴스"} title="오늘의 시장 브리핑" action="더보기" onAction={onOpenNews} />
           <div className="news-list">
-            {newsItems.map((news, index) => <article className="news-row" key={news.title}><div className={`news-number number-${index + 1}`}>{String(index + 1).padStart(2, "0")}</div><div><span>{news.category}</span><h3>{news.title}</h3><p>{news.time}</p></div><ChevronRight size={16} /></article>)}
+            {newsItems.map((news, index) => <article className="news-row" key={news.id} onClick={() => news.link && window.open(news.link, "_blank", "noopener,noreferrer")}><div className={`news-number number-${index + 1}`}>{String(index + 1).padStart(2, "0")}</div><div><span>{news.category}</span><h3>{news.title}</h3><p>{news.time}</p></div><ChevronRight size={16} /></article>)}
           </div>
         </section>
 
@@ -233,6 +241,7 @@ export default function Home() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showNews, setShowNews] = useState(false);
   const noticeListings = listings.filter((listing) => listing.type === "notice");
   const [homeListings, setHomeListings] = useState<Listing[]>(noticeListings);
   const [postedListings, setPostedListings] = useState<Listing[]>([]);
@@ -308,6 +317,14 @@ export default function Home() {
     setSelectedListing(toListing(created, complex));
   };
 
+  if (showNews) {
+    return (
+      <div className="app-frame">
+        <NewsScreen onClose={() => setShowNews(false)} />
+      </div>
+    );
+  }
+
   if (showProfile) {
     return (
       <div className="app-frame">
@@ -340,6 +357,6 @@ export default function Home() {
   }
 
   const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listings={homeListings} onOpenListing={openListing} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} /> : <MyView onOpenProfile={() => setShowProfile(true)} />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenNews={() => setShowNews(true)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listings={homeListings} onOpenListing={openListing} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} /> : <MyView onOpenProfile={() => setShowProfile(true)} />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={setActiveTab} /></div>;
 }

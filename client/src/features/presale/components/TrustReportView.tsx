@@ -1,6 +1,7 @@
 import { AlertTriangle, Check, ChevronRight, ShieldAlert } from "lucide-react";
 import { StatusPill } from "@/components/common/StatusPill";
 import { TRUST_SOURCE_LABELS } from "../ai/trustEngine";
+import { AI_PROVIDER_LABELS } from "../ai/types";
 import type { TrustItem, TrustItemStatus, TrustReport } from "../types";
 import "../presale.css";
 
@@ -52,7 +53,7 @@ export function TrustReportView({
       <div className="section-header">
         <div>
           <p className="eyebrow">
-            집콕 검증 리포트 · {report.mode === "live" ? "AI 검증" : "데모 검증"}
+            집콕 검증 리포트 · {report.mode === "live" ? `AI 검증${report.analyzedBy ? ` · ${AI_PROVIDER_LABELS[report.analyzedBy.provider]}` : ""}` : "데모 검증"}
           </p>
           <h2>
             거래 안전도 <span className="score-highlight">{score}점</span>
