@@ -128,7 +128,8 @@ function MyView() {
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
-  const [selectedThread, setSelectedThread] = useState<ChatThread | null>(null);
+  const [threads, setThreads] = useState<ChatThread[]>(chatThreads);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [showAiSessions, setShowAiSessions] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const noticeListings = listings.filter((listing) => listing.type === "notice");
@@ -195,13 +196,31 @@ export default function Home() {
   const toggleLike = () => {
     if (selectedListing) toggleListingLike(selectedListing);
   };
-  const goChat = () => { setSelectedListing(null); setSelectedThread(chatThreads.find((thread) => thread.kind === "ai") ?? null); };
+  const goChat = () => { setSelectedListing(null); setSelectedThreadId(threads.find((thread) => thread.kind === "ai")?.id ?? null); };
   const openAiSessions = () => setShowAiSessions(true);
   const openSellerThread = (listing: Listing) => {
     setSelectedListing(null);
-    const match = chatThreads.find((thread) => thread.kind === "seller" && thread.listingTitle === listing.title)
-      ?? chatThreads.find((thread) => thread.kind === "seller");
-    setSelectedThread(match ?? null);
+    const match = threads.find((thread) => thread.kind === "seller" && thread.listingTitle === listing.title)
+      ?? threads.find((thread) => thread.kind === "seller");
+    setSelectedThreadId(match?.id ?? null);
+  };
+  const sendThreadMessage = (threadId: string, text: string) => {
+    setThreads((prev) => prev.map((thread) => thread.id === threadId
+      ? { ...thread, messages: [...thread.messages, { id: `local-${thread.messages.length}`, sender: "me" as const, text, time: "방금 전" }] }
+      : thread));
+  };
+  const startNewAiSession = () => {
+    const id = `ai-${Date.now()}`;
+    const session: ChatThread = {
+      id,
+      kind: "ai",
+      name: "새로운 질문",
+      subtitle: "방금 전",
+      messages: [{ id: "1", sender: "other", text: "안녕하세요! 무엇을 도와드릴까요?", time: "방금 전" }],
+    };
+    setThreads((prev) => [session, ...prev]);
+    setShowAiSessions(false);
+    setSelectedThreadId(id);
   };
   const goListings = () => { setSelectedListing(null); setActiveTab("listings"); };
   const openRegister = () => setShowRegister(true);
@@ -229,17 +248,26 @@ export default function Home() {
     return <div className="app-frame"><ListingDetail listing={currentListing} liked={currentListing.liked ?? false} onBack={() => setSelectedListing(null)} onToggleLike={toggleLike} onGoChat={() => openSellerThread(currentListing)} /></div>;
   }
 
-  if (selectedThread) {
-    return <div className="app-frame"><ChatRoomView thread={selectedThread} onBack={() => setSelectedThread(null)} /></div>;
+  const activeThread = selectedThreadId ? threads.find((thread) => thread.id === selectedThreadId) ?? null : null;
+  if (activeThread) {
+    return (
+      <div className="app-frame">
+        <ChatRoomView
+          thread={activeThread}
+          onBack={() => setSelectedThreadId(null)}
+          onSend={(text) => sendThreadMessage(activeThread.id, text)}
+        />
+      </div>
+    );
   }
 
   if (showAiSessions) {
     return (
       <div className="app-frame">
         <ChatSessionList
-          sessions={chatThreads.filter((thread) => thread.kind === "ai")}
-          onOpenSession={(session) => { setShowAiSessions(false); setSelectedThread(session); }}
-          onNewSession={() => toast("새 대화 시작 기능을 준비 중이에요")}
+          sessions={threads.filter((thread) => thread.kind === "ai")}
+          onOpenSession={(session) => { setShowAiSessions(false); setSelectedThreadId(session.id); }}
+          onNewSession={startNewAiSession}
           onBack={() => setShowAiSessions(false)}
         />
       </div>
