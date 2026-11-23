@@ -104,7 +104,7 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
 
 function ChatView({ listings: chatListings, sellerThreads, onOpenSessions, onOpenSellerThread }: { listings: Listing[]; sellerThreads: ChatThread[]; onOpenSessions: () => void; onOpenSellerThread: (listing: Listing) => void }) {
   const tradeListings = chatListings.filter((listing) => listing.type === "trade");
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div><button className="icon-button"><Search size={19} /></button></header><main className="chat-main"><button className="ai-thread" onClick={onOpenSessions}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>분양권 거래</span><span>{tradeListings.length}개</span></div><div className="chat-list">{tradeListings.slice(0, 2).map((listing) => {
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div><button className="icon-button"><Search size={19} /></button></header><main className="chat-main"><button className="ai-thread" onClick={onOpenSessions}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>분양권 거래</span><span>{tradeListings.length}개</span></div><div className="chat-list">{tradeListings.map((listing) => {
     const thread = sellerThreads.find((candidate) => candidate.listingTitle === listing.title);
     const lastMessage = thread?.messages[thread.messages.length - 1];
     return <button key={listing.id} className="chat-row" onClick={() => onOpenSellerThread(listing)}><div className="thread-avatar seller-avatar">{listing.presale?.seller.realName.slice(0, 2) ?? "판매"}</div><div className="thread-copy"><div><strong>{listing.title} · 판매자</strong><StatusPill tone={thread ? "green" : "navy"}>{thread ? "대화중" : "새 대화"}</StatusPill></div><p>{lastMessage?.text ?? "아직 대화를 시작하지 않았어요"}</p></div><div className="chat-meta"><span>{lastMessage?.time ?? ""}</span></div></button>;
@@ -204,9 +204,24 @@ export default function Home() {
   const openAiSessions = () => setShowAiSessions(true);
   const openSellerThread = (listing: Listing) => {
     setSelectedListing(null);
-    const match = threads.find((thread) => thread.kind === "seller" && thread.listingTitle === listing.title)
-      ?? threads.find((thread) => thread.kind === "seller");
-    setSelectedThreadId(match?.id ?? null);
+    const existing = threads.find((thread) => thread.kind === "seller" && thread.listingTitle === listing.title);
+    if (existing) {
+      setSelectedThreadId(existing.id);
+      return;
+    }
+    const sellerName = listing.presale?.seller.realName ?? "판매자";
+    const created: ChatThread = {
+      id: `seller-${listing.id}`,
+      kind: "seller",
+      name: "판매자",
+      subtitle: "새 대화",
+      listingTitle: listing.title,
+      listingPrice: listing.price,
+      listingImage: listing.image,
+      messages: [{ id: "1", sender: "other", text: `안녕하세요, ${sellerName}입니다. 궁금하신 점 편하게 물어보세요.`, time: "방금 전" }],
+    };
+    setThreads((prev) => [...prev, created]);
+    setSelectedThreadId(created.id);
   };
   const sendThreadMessage = (threadId: string, text: string) => {
     setThreads((prev) => prev.map((thread) => thread.id === threadId
