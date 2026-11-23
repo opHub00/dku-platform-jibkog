@@ -33,6 +33,9 @@ import { ChatSessionList } from "@/pages/ChatSessionList";
 import { chatThreads } from "@/features/chat/data/threads";
 import type { ChatThread } from "@/features/chat/types";
 
+/** 데모용 AI 상담 고정 답장. */
+const AI_DEMO_REPLY = "네, 확인했어요. 관련 정보를 조금 더 찾아서 알려드릴게요.";
+
 function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
   const [showChatTeaser, setShowChatTeaser] = useState(true);
@@ -224,9 +227,17 @@ export default function Home() {
     setSelectedThreadId(created.id);
   };
   const sendThreadMessage = (threadId: string, text: string) => {
-    setThreads((prev) => prev.map((thread) => thread.id === threadId
-      ? { ...thread, messages: [...thread.messages, { id: `local-${thread.messages.length}`, sender: "me" as const, text, time: "방금 전" }] }
-      : thread));
+    const thread = threads.find((item) => item.id === threadId);
+    setThreads((prev) => prev.map((item) => item.id === threadId
+      ? { ...item, messages: [...item.messages, { id: `local-${item.messages.length}`, sender: "me" as const, text, time: "방금 전" }] }
+      : item));
+    if (thread?.kind === "ai") {
+      setTimeout(() => {
+        setThreads((prev) => prev.map((item) => item.id === threadId
+          ? { ...item, messages: [...item.messages, { id: `local-${item.messages.length}`, sender: "other" as const, text: AI_DEMO_REPLY, time: "방금 전" }] }
+          : item));
+      }, 700);
+    }
   };
   const startNewAiSession = () => {
     const id = `ai-${Date.now()}`;
