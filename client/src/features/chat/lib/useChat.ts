@@ -1,32 +1,43 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "@/features/auth/lib/session";
 import { chatRepository } from "../api/chatRepository";
 import type { ChatMessage, ChatRoom } from "../types";
 
-/** 대화방 목록. 이 탭·다른 탭에서 바뀌면 다시 읽는다. */
+/** 내 대화방 목록. 로그인 안 했으면 빈 목록. 이 기기·다른 기기에서 바뀌면 다시 읽는다. */
 export function useChatRooms(): ChatRoom[] | null {
+  const { user, loaded } = useAuth();
   const [rooms, setRooms] = useState<ChatRoom[] | null>(null);
   useEffect(() => {
+    if (!loaded) return;
+    if (!user) {
+      setRooms([]);
+      return;
+    }
     let active = true;
-    const load = () => void chatRepository.listRooms().then((r) => active && setRooms(r));
+    const load = () =>
+      void chatRepository
+        .listRooms()
+        .then((r) => active && setRooms(r))
+        .catch(() => active && setRooms([]));
     load();
     const unsubscribe = chatRepository.subscribe(load);
     return () => {
       active = false;
       unsubscribe();
     };
-  }, []);
+  }, [user?.id, loaded]);
   return rooms;
 }
 
 /** 대화방 하나와 메시지. 이 방이 바뀌면 다시 읽는다. */
-export function useChatRoom(roomId: string): { room: ChatRoom | null; messages: ChatMessage[]; loaded: boolean } {
+export function useChatRoom(roomId: number): { room: ChatRoom | null; messages: ChatMessage[]; loaded: boolean } {
   const [state, setState] = useState<{ room: ChatRoom | null; messages: ChatMessage[]; loaded: boolean }>({ room: null, messages: [], loaded: false });
   useEffect(() => {
     let active = true;
     const load = () =>
-      void Promise.all([chatRepository.getRoom(roomId), chatRepository.listMessages(roomId)]).then(([room, messages]) => {
-        if (active) setState({ room, messages, loaded: true });
-      });
+      void Promise.all([chatRepository.getRoom(roomId), chatRepository.listMessages(roomId).catch(() => [])])
+        .then(([room, messages]) => active && setState({ room, messages, loaded: true }))
+        .catch(() => active && setState({ room: null, messages: [], loaded: true }));
     load();
     const unsubscribe = chatRepository.subscribe((event) => {
       if (event.roomId === null || event.roomId === roomId) load();

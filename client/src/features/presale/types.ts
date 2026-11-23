@@ -27,7 +27,10 @@ export type Complex = {
 };
 
 export type Seller = {
+  /** 서버 사용자 id(서버 저장소를 쓸 때만 있음) */
+  id?: number;
   nickname: string;
+  /** 서버는 본인이 아니면 가운데를 가린 이름("김*연")을 준다 */
   realName: string;
   identityVerified: boolean;
   /** 완료된 거래 횟수 */
@@ -72,12 +75,14 @@ export type PresaleListing = {
   createdAt: string;
   /** 마지막 신뢰 검증 결과. 아직 검증하지 않았으면 없음 */
   trust?: TrustReport;
+  /** 로그인한 내가 판매자인 매물이면 true(서버 저장소를 쓸 때만 있음) */
+  isMine?: boolean;
 };
 
 /** 매물 등록 시 입력값. id·상태·찜·등록시각·검증결과는 저장소가 채운다. */
 export type NewPresaleListingInput = Omit<
   PresaleListing,
-  "id" | "status" | "liked" | "createdAt" | "trust"
+  "id" | "status" | "liked" | "createdAt" | "trust" | "isMine"
 >;
 
 export type TrustItemStatus = "pass" | "warn" | "fail";

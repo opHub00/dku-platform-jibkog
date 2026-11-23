@@ -51,7 +51,9 @@ import { NEWS_CATEGORY_LABELS } from "@/features/news/types";
 import { chatRepository } from "@/features/chat/api/chatRepository";
 import { ChatRoomScreen } from "@/features/chat/components/ChatRoomScreen";
 import { formatChatListTime, splitWon, suggestedOffer } from "@/features/chat/lib/format";
-import { avatarText, counterpart, ME_ID, myParticipant, sellerParticipantId, viewerRole } from "@/features/chat/lib/identity";
+import { avatarText, ROLE_LABELS } from "@/features/chat/lib/names";
+import { AuthScreen } from "@/features/auth/components/AuthScreen";
+import { logout, useAuth } from "@/features/auth/lib/session";
 import { useChatRooms } from "@/features/chat/lib/useChat";
 import { CHAT_STATUS_LABELS, CHAT_STATUS_TONES } from "@/features/chat/types";
 import "@/features/chat/chat.css";
@@ -138,7 +140,7 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
 
 function DetailView({ listing, liked, isMine, onBack, onToggleLike, onOpenChat, onSendOffer, onOpenInquiries }: { listing: Listing; liked: boolean; isMine: boolean; onBack: () => void; onToggleLike: () => void; onOpenChat: () => void; onSendOffer: (amount: number, baseAmount: number) => void; onOpenInquiries: () => void }) {
   const chatRooms = useChatRooms();
-  const inquiryCount = (chatRooms ?? []).filter((room) => room.listingId === listing.id && room.seller.id === ME_ID).length;
+  const inquiryCount = (chatRooms ?? []).filter((room) => room.listingId === listing.id && room.myRole === "seller").length;
   const [showAi, setShowAi] = useState(false);
   const [showDoc, setShowDoc] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
@@ -222,10 +224,11 @@ function DetailView({ listing, liked, isMine, onBack, onToggleLike, onOpenChat, 
   );
 }
 
-function ChatView({ listingFilter, onOpenRoom }: { listingFilter: { id: number; title: string } | null; onOpenRoom: (roomId: string) => void }) {
+function ChatView({ listingFilter, onOpenRoom, onLogin }: { listingFilter: { id: number; title: string } | null; onOpenRoom: (roomId: number) => void; onLogin: () => void }) {
+  const { user } = useAuth();
   const allRooms = useChatRooms();
-  const chatRooms = (allRooms ?? []).filter((room) => !listingFilter || (room.listingId === listingFilter.id && room.seller.id === ME_ID));
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div><button className="icon-button"><Search size={19} /></button></header><main className="chat-main"><button className="ai-thread" onClick={() => toast("AI 상담 스레드를 열었어요")}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>{listingFilter ? `${listingFilter.title} 문의` : "분양권 거래"}</span><span>{chatRooms.length}개</span></div><div className="chat-list">{allRooms && chatRooms.length === 0 && <p className="ch-empty">{listingFilter ? "아직 이 매물에 온 문의가 없어요" : "아직 대화가 없어요. 매물 상세에서 판매자와 채팅을 시작해보세요"}</p>}{chatRooms.map((room) => { const role = viewerRole(room); const other = counterpart(room, role); const unread = room.unread[role]; return <button key={room.id} className="chat-row" onClick={() => onOpenRoom(room.id)}><div className="thread-avatar seller-avatar">{avatarText(other.participant.name)}</div><div className="thread-copy"><div><strong>{room.listingTitle} · {other.label}</strong><StatusPill tone={CHAT_STATUS_TONES[room.status]}>{CHAT_STATUS_LABELS[room.status]}</StatusPill></div><p>{room.lastMessage?.preview ?? "아직 메시지가 없어요"}</p></div><div className="chat-meta"><span>{formatChatListTime(room.lastMessage?.at ?? room.createdAt)}</span>{unread > 0 && <b>{unread > 9 ? "9+" : unread}</b>}</div></button>; })}</div><div className="chat-tip"><CircleHelp size={17} /><div><strong>거래 채팅은 안심번호로 보호돼요</strong><p>상대방과 주고받은 서류는 계약서류 점검 이력에 저장됩니다.</p></div></div></main></div>;
+  const chatRooms = (allRooms ?? []).filter((room) => !listingFilter || (room.listingId === listingFilter.id && room.myRole === "seller"));
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div><button className="icon-button"><Search size={19} /></button></header><main className="chat-main"><button className="ai-thread" onClick={() => toast("AI 상담 스레드를 열었어요")}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>{listingFilter ? `${listingFilter.title} 문의` : "분양권 거래"}</span><span>{chatRooms.length}개</span></div><div className="chat-list">{allRooms && chatRooms.length === 0 && <p className="ch-empty">{!user ? <>로그인하면 거래 채팅을 볼 수 있어요 <button className="text-action" onClick={onLogin}>로그인</button></> : listingFilter ? "아직 이 매물에 온 문의가 없어요" : "아직 대화가 없어요. 매물 상세에서 판매자와 채팅을 시작해보세요"}</p>}{chatRooms.map((room) => { const otherLabel = ROLE_LABELS[room.myRole === "buyer" ? "seller" : "buyer"]; const unread = room.unread; return <button key={room.id} className="chat-row" onClick={() => onOpenRoom(room.id)}><div className="thread-avatar seller-avatar">{avatarText(room.counterpart.nickname)}</div><div className="thread-copy"><div><strong>{room.listingTitle} · {otherLabel}</strong><StatusPill tone={CHAT_STATUS_TONES[room.status]}>{CHAT_STATUS_LABELS[room.status]}</StatusPill></div><p>{room.lastMessage?.preview ?? "아직 메시지가 없어요"}</p></div><div className="chat-meta"><span>{formatChatListTime(room.lastMessage?.at ?? room.createdAt)}</span>{unread > 0 && <b>{unread > 9 ? "9+" : unread}</b>}</div></button>; })}</div><div className="chat-tip"><CircleHelp size={17} /><div><strong>거래 채팅은 안심번호로 보호돼요</strong><p>상대방과 주고받은 서류는 계약서류 점검 이력에 저장됩니다.</p></div></div></main></div>;
 }
 
 function FavoritesView({ listings: favoriteListings, onOpenListing, onToggleLike, onOpenRegister, onOpenInquiries }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onToggleLike: (listing: Listing) => void; onOpenRegister: () => void; onOpenInquiries: (listing: Listing) => void }) {
@@ -234,10 +237,11 @@ function FavoritesView({ listings: favoriteListings, onOpenListing, onToggleLike
   const savedListings = favoriteListings.filter((listing) => listing.liked);
   const postedListings = favoriteListings.filter((listing) => listing.type === "trade");
   const postedListing = postedListings[0];
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 공간</p><h1>관심</h1></div><button className="icon-button"><MoreHorizontal size={20} /></button></header><main className="favorites-main"><div className="segment-control"><button className={segment === "saved" ? "active" : ""} onClick={() => setSegment("saved")}>찜한 매물 <span>{savedListings.length}</span></button><button className={segment === "posted" ? "active" : ""} onClick={() => setSegment("posted")}>내가 등록한 매물 <span>{postedListings.length}</span></button></div>{segment === "saved" ? <div className="favorite-stack">{savedListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => onToggleLike(listing)} />)}</div> : <div className="posted-view"><div className="posted-summary"><div><span className="eyebrow">판매 중인 매물</span><strong>{postedListings.length}건</strong><p>관심 있는 구매자와 대화를 시작해보세요.</p></div><div className="posted-chart"><span /><span /><span /><span /><span /></div></div>{postedListing && <div className="posted-card" onClick={() => onOpenListing(postedListing)}><div className="posted-card-image"><img src={postedListing.image} alt="" /><StatusPill tone="green">{postedListing.presale?.status === "review" ? "검토중" : "거래중"}</StatusPill></div><div><div className="listing-meta"><span>{postedListing.location}</span><span>조회 24</span></div><h3>{postedListing.title}</h3><strong className="listing-price">{postedListing.price}</strong><div className="posted-actions"><button onClick={(event) => { event.stopPropagation(); toast("등록 매물을 수정할 수 있어요"); }}>수정</button><button onClick={(event) => { event.stopPropagation(); toast("매물 통계를 확인했어요"); }}>통계 보기</button><button onClick={(event) => { event.stopPropagation(); onOpenInquiries(postedListing); }}>문의 {(chatRooms ?? []).filter((room) => room.listingId === postedListing.id && room.seller.id === ME_ID).length}건</button></div></div></div>}</div>}<button className="add-listing-button" onClick={onOpenRegister}><Plus size={18} /><span>{segment === "posted" ? "새 매물 등록하기" : "내 매물 등록하기"}</span><ChevronRight size={16} /></button></main></div>;
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 공간</p><h1>관심</h1></div><button className="icon-button"><MoreHorizontal size={20} /></button></header><main className="favorites-main"><div className="segment-control"><button className={segment === "saved" ? "active" : ""} onClick={() => setSegment("saved")}>찜한 매물 <span>{savedListings.length}</span></button><button className={segment === "posted" ? "active" : ""} onClick={() => setSegment("posted")}>내가 등록한 매물 <span>{postedListings.length}</span></button></div>{segment === "saved" ? <div className="favorite-stack">{savedListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => onToggleLike(listing)} />)}</div> : <div className="posted-view"><div className="posted-summary"><div><span className="eyebrow">판매 중인 매물</span><strong>{postedListings.length}건</strong><p>관심 있는 구매자와 대화를 시작해보세요.</p></div><div className="posted-chart"><span /><span /><span /><span /><span /></div></div>{postedListing && <div className="posted-card" onClick={() => onOpenListing(postedListing)}><div className="posted-card-image"><img src={postedListing.image} alt="" /><StatusPill tone="green">{postedListing.presale?.status === "review" ? "검토중" : "거래중"}</StatusPill></div><div><div className="listing-meta"><span>{postedListing.location}</span><span>조회 24</span></div><h3>{postedListing.title}</h3><strong className="listing-price">{postedListing.price}</strong><div className="posted-actions"><button onClick={(event) => { event.stopPropagation(); toast("등록 매물을 수정할 수 있어요"); }}>수정</button><button onClick={(event) => { event.stopPropagation(); toast("매물 통계를 확인했어요"); }}>통계 보기</button><button onClick={(event) => { event.stopPropagation(); onOpenInquiries(postedListing); }}>문의 {(chatRooms ?? []).filter((room) => room.listingId === postedListing.id && room.myRole === "seller").length}건</button></div></div></div>}</div>}<button className="add-listing-button" onClick={onOpenRegister}><Plus size={18} /><span>{segment === "posted" ? "새 매물 등록하기" : "내 매물 등록하기"}</span><ChevronRight size={16} /></button></main></div>;
 }
 
-function MyView({ onOpenProfile }: { onOpenProfile: () => void }) {
+function MyView({ onOpenProfile, onLogin }: { onOpenProfile: () => void; onLogin: () => void }) {
+  const { user } = useAuth();
   const profile = useProfile();
   const likedPresaleCount = useLikedPresaleCount();
   const menuItems = [
@@ -246,7 +250,7 @@ function MyView({ onOpenProfile }: { onOpenProfile: () => void }) {
     { icon: <FileCheck2 size={18} />, label: "계약서류 점검 이력", detail: "최근 점검 2건" },
     { icon: <WalletCards size={18} />, label: "멤버십 관리", detail: "집콕 프리미엄 이용 중" },
   ];
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 정보</p><h1>MY</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header><main className="my-main"><div className="profile-card"><div className="profile-top"><div className="profile-avatar">{shortName(profile.name)}</div><div><h2>{profile.name}님</h2><p>가입일 2026. 04. 18</p></div><button onClick={() => toast("프로필 편집을 준비 중이에요")}><MoreHorizontal size={19} /></button></div><div className="profile-divider" /><div className="profile-stats"><div><span>청약 가점</span><strong>62점</strong></div><div><span>관심지역</span><strong>{profile.interestRegions.length}곳</strong></div><div><span>찜한 매물</span><strong>{likedPresaleCount}건</strong></div></div></div><div className="my-section"><SectionHeader eyebrow="관리" title="내 설정" /><div className="my-menu">{menuItems.map((item) => <button key={item.label} className="my-menu-row" onClick={() => item.label === "프로필 · 관심지역 설정" ? onOpenProfile() : toast(`${item.label} 화면을 준비 중이에요`)}><div className="my-menu-icon">{item.icon}</div><div><strong>{item.label}</strong><span>{item.detail}</span></div><ChevronRight size={16} /></button>)}</div></div><div className="membership-card"><div className="membership-icon"><Sparkles size={18} /></div><div><span className="eyebrow">집콕 프리미엄</span><strong>계약서류 AI 점검을 무제한으로</strong><p>다음 결제일 2026. 12. 18</p></div><button onClick={() => toast("멤버십 관리 화면을 준비 중이에요")}><ChevronRight size={16} /></button></div><div className="my-footer"><span>버전 1.0.0</span><button>이용약관</button><button>개인정보처리방침</button></div></main></div>;
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 정보</p><h1>MY</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header><main className="my-main"><div className="profile-card"><div className="profile-top"><div className="profile-avatar">{shortName(profile.name)}</div><div><h2>{profile.name}님</h2><p>가입일 2026. 04. 18</p></div><button onClick={() => toast("프로필 편집을 준비 중이에요")}><MoreHorizontal size={19} /></button></div><div className="profile-divider" /><div className="profile-stats"><div><span>청약 가점</span><strong>62점</strong></div><div><span>관심지역</span><strong>{profile.interestRegions.length}곳</strong></div><div><span>찜한 매물</span><strong>{likedPresaleCount}건</strong></div></div></div><div className="my-section"><SectionHeader eyebrow="관리" title="내 설정" /><div className="my-menu">{menuItems.map((item) => <button key={item.label} className="my-menu-row" onClick={() => item.label === "프로필 · 관심지역 설정" ? onOpenProfile() : toast(`${item.label} 화면을 준비 중이에요`)}><div className="my-menu-icon">{item.icon}</div><div><strong>{item.label}</strong><span>{item.detail}</span></div><ChevronRight size={16} /></button>)}</div></div><div className="membership-card"><div className="membership-icon"><Sparkles size={18} /></div><div><span className="eyebrow">집콕 프리미엄</span><strong>계약서류 AI 점검을 무제한으로</strong><p>다음 결제일 2026. 12. 18</p></div><button onClick={() => toast("멤버십 관리 화면을 준비 중이에요")}><ChevronRight size={16} /></button></div><div className="my-footer"><span>버전 1.0.0</span><button>이용약관</button><button>개인정보처리방침</button>{user ? <button onClick={() => void logout().then(() => toast("로그아웃했어요"))}>로그아웃</button> : <button onClick={onLogin}>로그인</button>}</div></main></div>;
 }
 
 export default function Home() {
@@ -255,9 +259,10 @@ export default function Home() {
   const [showRegister, setShowRegister] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showNews, setShowNews] = useState(false);
-  const [chatRoomId, setChatRoomId] = useState<string | null>(null);
+  const [chatRoomId, setChatRoomId] = useState<number | null>(null);
+  const [authPrompt, setAuthPrompt] = useState<{ reason: string; then?: () => void } | null>(null);
+  const { user } = useAuth();
   const [chatFilter, setChatFilter] = useState<{ id: number; title: string } | null>(null);
-  const profile = useProfile();
   const noticeListings = listings.filter((listing) => listing.type === "notice");
   const [homeListings, setHomeListings] = useState<Listing[]>(noticeListings);
   const [postedListings, setPostedListings] = useState<Listing[]>([]);
@@ -266,12 +271,11 @@ export default function Home() {
   useEffect(() => {
     let active = true;
     const reloadListings = async () => {
-      const [visiblePresaleListings, allPresaleListings, complexes, currentSeller] = await Promise.all([
+      const [visiblePresaleListings, allPresaleListings, complexes] = await Promise.all([
         presaleRepository.listListings(),
         presaleRepository.listListings({ includeHidden: true }),
         presaleRepository.listComplexes(),
-        presaleRepository.getCurrentSeller(),
-      ]);
+      ]).catch(() => [[], [], []] as [PresaleListing[], PresaleListing[], Awaited<ReturnType<typeof presaleRepository.listComplexes>>]);
       if (!active) return;
       const complexById = new Map(complexes.map((complex) => [complex.id, complex]));
       const toUiListings = (presaleListings: PresaleListing[]) =>
@@ -286,8 +290,8 @@ export default function Home() {
       setHomeListings([...visibleTradeListings, ...noticeListings]);
       setPostedListings(
         allTradeListings.filter(
-          (listing) =>
-            listing.presale?.seller.realName === currentSeller.realName,
+          // 내 매물 여부는 서버가 로그인 정보로 판단한다
+          (listing) => listing.presale?.isMine === true,
         ),
       );
       setLikedIds([
@@ -304,14 +308,23 @@ export default function Home() {
   }, []);
 
   const openListing = (listing: Listing) => setSelectedListing(listing);
+  /** 로그인이 필요한 동작: 로그인 안 했으면 로그인 화면을 띄우고, 로그인하면 이어서 실행한다 */
+  const requireLogin = (reason: string, action: () => void) => {
+    if (user) action();
+    else setAuthPrompt({ reason, then: action });
+  };
   const toggleListingLike = (listing: Listing) => {
+    if (!user) {
+      setAuthPrompt({ reason: "찜하려면 로그인이 필요해요" });
+      return;
+    }
     if (listing.type === "trade") {
       void presaleRepository.toggleLike(listing.id).then((updated) => {
         setLikedIds((current) => updated.liked
           ? [...current.filter((id) => id !== updated.id), updated.id]
           : current.filter((id) => id !== updated.id));
         toast(updated.liked ? "관심 매물에 저장했어요" : "관심 매물에서 삭제했어요");
-      });
+      }).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "찜하지 못했어요"));
       return;
     }
     setLikedIds((current) => current.includes(listing.id)
@@ -324,31 +337,27 @@ export default function Home() {
   };
   const goChat = () => { setSelectedListing(null); setActiveTab("chat"); };
   const changeTab = (tab: Tab) => { setChatFilter(null); setActiveTab(tab); };
-  const isMyListing = (listing: Listing) => listing.type === "trade" && postedListings.some((posted) => posted.id === listing.id);
-  /** 같은 매물·같은 상대면 기존 대화방을 다시 연다 */
-  const ensureRoom = (listing: Listing) =>
-    chatRepository.findOrCreateRoom({
-      listingId: listing.id,
-      listingTitle: listing.title,
-      buyer: myParticipant(profile.name),
-      seller: { id: sellerParticipantId(listing.id, isMyListing(listing)), name: listing.presale?.seller.nickname ?? "판매자" },
-    });
-  const openChatForListing = (listing: Listing) => {
-    void ensureRoom(listing).then((room) => {
-      setSelectedListing(null);
-      setChatRoomId(room.id);
-    });
-  };
-  const sendOfferForListing = (listing: Listing, amount: number, baseAmount: number) => {
+  const isMyListing = (listing: Listing) => listing.type === "trade" && (listing.presale?.isMine === true || postedListings.some((posted) => posted.id === listing.id));
+  /** 같은 매물·같은 구매자면 서버가 기존 대화방을 돌려준다 */
+  const ensureRoom = (listing: Listing) => chatRepository.openRoomForListing(listing.id);
+  const openChatForListing = (listing: Listing) => requireLogin("채팅하려면 로그인이 필요해요", () => {
     void ensureRoom(listing)
-      .then((room) => chatRepository.sendOffer(room.id, "buyer", amount, baseAmount).then(() => room))
+      .then((room) => {
+        setSelectedListing(null);
+        setChatRoomId(room.id);
+      })
+      .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "대화방을 열지 못했어요"));
+  });
+  const sendOfferForListing = (listing: Listing, amount: number, _baseAmount: number) => requireLogin("가격을 제안하려면 로그인이 필요해요", () => {
+    void ensureRoom(listing)
+      .then((room) => chatRepository.sendOffer(room.id, amount).then(() => room))
       .then((room) => {
         toast("가격 제안을 판매자에게 보냈어요");
         setSelectedListing(null);
         setChatRoomId(room.id);
       })
       .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "가격 제안을 보내지 못했어요"));
-  };
+  });
   const openInquiries = (listing: Listing) => {
     setSelectedListing(null);
     setChatFilter({ id: listing.id, title: listing.title });
@@ -365,7 +374,7 @@ export default function Home() {
     setSelectedListing(toListing(presaleListing, complex));
   };
   const goListings = () => { setSelectedListing(null); setActiveTab("listings"); };
-  const openRegister = () => setShowRegister(true);
+  const openRegister = () => requireLogin("매물을 등록하려면 로그인이 필요해요", () => setShowRegister(true));
   const handleRegistered = async (created: PresaleListing) => {
     const complex = await presaleRepository.getComplex(created.complexId);
     if (!complex) return;
@@ -373,6 +382,23 @@ export default function Home() {
     setActiveTab("favorites");
     setSelectedListing(toListing(created, complex));
   };
+
+  if (authPrompt) {
+    return (
+      <div className="app-frame">
+        <AuthScreen
+          reason={authPrompt.reason}
+          onClose={() => setAuthPrompt(null)}
+          onDone={(loggedIn) => {
+            const next = authPrompt.then;
+            setAuthPrompt(null);
+            toast(`${loggedIn.nickname}님, 반가워요`);
+            next?.();
+          }}
+        />
+      </div>
+    );
+  }
 
   if (showNews) {
     return (
@@ -422,6 +448,6 @@ export default function Home() {
   }
 
   const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenNews={() => setShowNews(true)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenNews={() => setShowNews(true)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={changeTab} /></div>;
 }

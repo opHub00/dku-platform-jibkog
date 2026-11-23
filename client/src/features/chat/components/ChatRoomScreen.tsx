@@ -8,7 +8,7 @@ import { calcTotalRequiredFunds } from "@/features/presale/lib/funds";
 import { formatWon } from "@/features/presale/lib/format";
 import { chatRepository } from "../api/chatRepository";
 import { formatBubbleTime } from "../lib/format";
-import { counterpart, setViewerRole, viewerRole } from "../lib/identity";
+import { ROLE_LABELS } from "../lib/names";
 import { useChatRoom, useKeyboardInset } from "../lib/useChat";
 import {
   CHAT_STATUS_LABELS,
@@ -53,7 +53,7 @@ function MessageItem({
 }: {
   message: ChatMessage;
   role: ChatRole;
-  onRespond: (messageId: string, accept: boolean) => void;
+  onRespond: (messageId: number, accept: boolean) => void;
 }) {
   if (message.kind === "system") return <p className="ch-system">{message.text}</p>;
   const mine = message.senderRole === role;
@@ -99,7 +99,7 @@ export function ChatRoomScreen({
   onClose,
   onOpenListing,
 }: {
-  roomId: string;
+  roomId: number;
   onClose: () => void;
   onOpenListing: (listingId: number) => void;
 }) {
@@ -107,13 +107,12 @@ export function ChatRoomScreen({
   const [summary, setSummary] = useState<ListingSummary | null>(null);
   const [draft, setDraft] = useState("");
   const [warning, setWarning] = useState<string | null>(null);
-  const [roleVersion, setRoleVersion] = useState(0);
   const [composerHeight, setComposerHeight] = useState(66);
   const composerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const keyboardInset = useKeyboardInset();
-  const role: ChatRole = room ? viewerRole(room) : "buyer";
-  void roleVersion; // 역할 전환 시 다시 그리기용
+  /** 서버가 로그인 정보로 정한 내 역할 */
+  const role: ChatRole = room?.myRole ?? "buyer";
 
   useEffect(() => {
     if (!room) return;
@@ -128,8 +127,8 @@ export function ChatRoomScreen({
 
   // 보고 있는 동안 받은 메시지는 읽음 처리
   useEffect(() => {
-    if (room && room.unread[role] > 0 && document.visibilityState === "visible") void chatRepository.markRead(room.id, role);
-  }, [room, role]);
+    if (room && room.unread > 0 && document.visibilityState === "visible") void chatRepository.markRead(room.id);
+  }, [room]);
 
   useLayoutEffect(() => {
     scrollToBottom();
@@ -160,7 +159,7 @@ export function ChatRoomScreen({
     );
   }
 
-  const other = counterpart(room, role);
+  const otherLabel = ROLE_LABELS[role === "buyer" ? "seller" : "buyer"];
   const closed = room.status === "done";
 
   async function send(force: boolean) {
@@ -173,7 +172,7 @@ export function ChatRoomScreen({
       return;
     }
     try {
-      await chatRepository.sendText(room.id, role, text);
+      await chatRepository.sendText(room.id, text);
       setDraft("");
       setWarning(null);
     } catch (error) {
@@ -181,10 +180,10 @@ export function ChatRoomScreen({
     }
   }
 
-  async function respond(messageId: string, accept: boolean) {
+  async function respond(messageId: number, accept: boolean) {
     if (!room) return;
     try {
-      await chatRepository.respondOffer(room.id, messageId, role, accept);
+      await chatRepository.respondOffer(room.id, messageId, accept);
       toast(accept ? "가격 제안을 수락했어요" : "가격 제안을 거절했어요");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "답하지 못했어요");
@@ -195,8 +194,8 @@ export function ChatRoomScreen({
     <div className="detail-screen">
       <header className="page-header">
         <div>
-          <p className="eyebrow">분양권 거래 · {other.label}</p>
-          <h1>{other.participant.name}</h1>
+          <p className="eyebrow">분양권 거래 · {otherLabel}</p>
+          <h1>{room.counterpart.nickname}</h1>
         </div>
         <button className="icon-button" onClick={onClose} aria-label="대화 닫기">
           <X size={19} />
@@ -223,28 +222,9 @@ export function ChatRoomScreen({
         <div className="ch-status-row">
           <StatusPill tone={CHAT_STATUS_TONES[room.status]}>{CHAT_STATUS_LABELS[room.status]}</StatusPill>
           {room.status === "contracting" && role === "seller" && (
-            <button className="text-action" onClick={() => void chatRepository.updateStatus(room.id, "done", role)}>
+            <button className="text-action" onClick={() => void chatRepository.complete(room.id).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "바꾸지 못했어요"))}>
               거래 완료로 표시
             </button>
-          )}
-          {import.meta.env.DEV && (
-            <div className="ch-dev-role">
-              <span>개발용 · 상대로 보기</span>
-              <div className="view-toggle">
-                {(["buyer", "seller"] as const).map((r) => (
-                  <button
-                    key={r}
-                    className={role === r ? "active" : ""}
-                    onClick={() => {
-                      setViewerRole(room.id, r);
-                      setRoleVersion((v) => v + 1);
-                    }}
-                  >
-                    {r === "buyer" ? "구매자" : "판매자"}
-                  </button>
-                ))}
-              </div>
-            </div>
           )}
         </div>
 

@@ -10,6 +10,7 @@ import type {
   TrustReport,
 } from "../types";
 import { currentSeller } from "../data/currentSeller";
+import { createHttpPresaleRepository } from "./httpPresaleRepository";
 
 /** 이 점수 미만이면 등록 후 바로 노출하지 않고 검토 대기로 둔다 */
 export const REVIEW_THRESHOLD_SCORE = 50;
@@ -224,5 +225,8 @@ export function createLocalStoragePresaleRepository(
 }
 
 /** 앱 전체에서 쓰는 기본 저장소 */
-export const presaleRepository: PresaleRepository =
-  createLocalStoragePresaleRepository();
+/**
+ * 앱 전체에서 쓰는 기본 저장소: 개발 서버 API(HTTP).
+ * 서버 없이 화면만 볼 때는 createLocalStoragePresaleRepository()로 바꿀 수 있다.
+ */
+export const presaleRepository: PresaleRepository = createHttpPresaleRepository();

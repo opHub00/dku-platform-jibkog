@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import path from "node:path";
 import type { Plugin } from "vite";
+import { createAppApi } from "./api/app";
 import {
   CONTRACT_MEDIA_TYPES,
   type AiApiResponse,
@@ -116,6 +118,9 @@ export function aiApiPlugin(options: { envDir: string }): Plugin {
         warn: (message) => server.config.logger.warn(message),
         error: (message) => server.config.logger.error(message),
       };
+      // 앱 API(로그인·매물·채팅·실시간). 데이터는 .data/jibkog.json(처음 실행 시 시드)
+      const appApi = createAppApi({ dataFile: path.join(options.envDir, ".data", "jibkog.json"), log: logger.error });
+      server.middlewares.use((req, res, next) => void appApi.middleware(req, res, next));
       server.middlewares.use(async (req, res, next) => {
         const url = req.url?.split("?")[0];
         if (url !== "/api/ai/extract-contract" && url !== "/api/ai/screen-description" && url !== "/api/news") {

@@ -1,11 +1,8 @@
-/** 대화방 안에서의 역할. 로그인이 붙기 전까지 보낸 사람은 역할로 구분한다. */
+/**
+ * 분양권 거래 채팅 타입. 서버(server/api)와 함께 쓰므로 "@/" 경로 import를 두지 않는다.
+ * 구매자/판매자 역할은 서버가 로그인 정보로 정해서 내려준다(myRole).
+ */
 export type ChatRole = "buyer" | "seller";
-
-export type ChatParticipant = {
-  /** 지금은 "me"(이 기기 사용자) 또는 "seller:<매물 id>". 로그인이 붙으면 사용자 id */
-  id: string;
-  name: string;
-};
 
 /** 거래 상태: 문의중 → 가격협의 → 계약진행 → 완료 */
 export type ChatRoomStatus = "inquiry" | "negotiating" | "contracting" | "done";
@@ -25,18 +22,19 @@ export const CHAT_STATUS_TONES: Record<ChatRoomStatus, "green" | "sand" | "navy"
 };
 
 export type ChatRoom = {
-  id: string;
+  id: number;
   listingId: number;
-  /** 목록에 보여줄 매물 요약(생성 시점) */
   listingTitle: string;
-  buyer: ChatParticipant;
-  seller: ChatParticipant;
+  /** 이 방에서 내 역할 */
+  myRole: ChatRole;
+  /** 상대방(닉네임만 공개) */
+  counterpart: { id: number; nickname: string };
   status: ChatRoomStatus;
   createdAt: string;
   updatedAt: string;
   lastMessage: { preview: string; at: string; senderRole: ChatRole | "system" } | null;
-  /** 역할별 안 읽은 메시지 수 */
-  unread: Record<ChatRole, number>;
+  /** 내가 안 읽은 메시지 수 */
+  unread: number;
 };
 
 export type OfferStatus = "pending" | "accepted" | "rejected" | "superseded";
@@ -49,10 +47,10 @@ export const OFFER_STATUS_LABELS: Record<OfferStatus, string> = {
 };
 
 export type ChatMessage =
-  | { id: string; roomId: string; kind: "text"; senderRole: ChatRole; text: string; createdAt: string }
+  | { id: number; roomId: number; kind: "text"; senderRole: ChatRole; text: string; createdAt: string }
   | {
-      id: string;
-      roomId: string;
+      id: number;
+      roomId: number;
       kind: "offer";
       senderRole: ChatRole;
       /** 제안한 총 매수가(원) */
@@ -63,6 +61,6 @@ export type ChatMessage =
       respondedAt: string | null;
       createdAt: string;
     }
-  | { id: string; roomId: string; kind: "system"; senderRole: "system"; text: string; createdAt: string };
+  | { id: number; roomId: number; kind: "system"; senderRole: "system"; text: string; createdAt: string };
 
-export type ChatChangeEvent = { type: "changed"; roomId: string | null };
+export type ChatChangeEvent = { type: "changed"; roomId: number | null };
