@@ -1,29 +1,18 @@
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft,
   Bell,
   Bot,
-  Building2,
-  CalendarDays,
-  Check,
   ChevronRight,
   CircleHelp,
   FileCheck2,
-  Heart,
   MapPin,
-  MessageCircle,
   MoreHorizontal,
-  Newspaper,
   Plus,
   Search,
-  Send,
-  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
-  Tag,
   UserRound,
   WalletCards,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tab, Listing } from "@/types";
@@ -34,20 +23,15 @@ import { SectionHeader } from "@/components/common/SectionHeader";
 import { BottomNav } from "@/components/common/BottomNav";
 import { ListingCard } from "@/components/common/ListingCard";
 import { ListingsView } from "@/pages/Listings";
+import { ListingDetail } from "@/pages/ListingDetail";
 import { presaleRepository } from "@/features/presale/api/presaleRepository";
-import { calcFundsBreakdown } from "@/features/presale/lib/funds";
-import { formatRelativeDate, formatWon } from "@/features/presale/lib/format";
 import { toListing } from "@/features/presale/lib/toListing";
 import { RegisterListingFlow } from "@/features/presale/components/RegisterListingFlow";
-import { TrustReportView } from "@/features/presale/components/TrustReportView";
 import type { PresaleListing } from "@/features/presale/types";
 import { useLikedPresaleCount } from "@/features/presale/lib/useLikedPresaleCount";
 import { ProfileForm } from "@/features/profile/components/ProfileForm";
 import { useProfile } from "@/features/profile/lib/useProfile";
 import { greetingName, interestHeadline, profileSummary, regionKey, shortName } from "@/features/profile/lib/profileText";
-import { NewsScreen } from "@/features/news/components/NewsScreen";
-import { sortByNewest, useNews } from "@/features/news/lib/useNews";
-import { NEWS_CATEGORY_LABELS } from "@/features/news/types";
 import { chatRepository } from "@/features/chat/api/chatRepository";
 import { ChatRoomScreen } from "@/features/chat/components/ChatRoomScreen";
 import { formatChatListTime, splitWon, suggestedOffer } from "@/features/chat/lib/format";
@@ -58,16 +42,9 @@ import { useChatRooms } from "@/features/chat/lib/useChat";
 import { CHAT_STATUS_LABELS, CHAT_STATUS_TONES } from "@/features/chat/types";
 import "@/features/chat/chat.css";
 
-/** 맞춤 뉴스를 불러오는 동안 보여줄 한 줄 */
-const newsLoadingItem = { id: "loading", category: "맞춤 뉴스", title: "관심지역 뉴스를 찾고 있어요", time: "잠시만요", link: "" };
-
-function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat, onOpenNews }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void; onOpenNews: () => void }) {
+function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
   const profile = useProfile();
-  const { data: newsData } = useNews();
-  const newsItems = newsData
-    ? sortByNewest(newsData.articles).slice(0, 3).map((article) => ({ id: article.id, category: NEWS_CATEGORY_LABELS[article.category], title: article.title, time: formatRelativeDate(article.publishedAt), link: article.link }))
-    : [newsLoadingItem];
   const firstInterest = profile.interestRegions[0];
   const firstInterestTradeCount = firstInterest
     ? tradeListings.filter((listing) => listing.district === regionKey(firstInterest) && listing.presale?.status === "selling").length
@@ -118,13 +95,6 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
           </div>
         </section>
 
-        <section>
-          <SectionHeader eyebrow={newsData?.source === "sample" ? "부동산 뉴스 · 샘플 뉴스" : "부동산 뉴스"} title="오늘의 시장 브리핑" action="더보기" onAction={onOpenNews} />
-          <div className="news-list">
-            {newsItems.map((news, index) => <article className="news-row" key={news.id} onClick={() => news.link && window.open(news.link, "_blank", "noopener,noreferrer")}><div className={`news-number number-${index + 1}`}>{String(index + 1).padStart(2, "0")}</div><div><span>{news.category}</span><h3>{news.title}</h3><p>{news.time}</p></div><ChevronRight size={16} /></article>)}
-          </div>
-        </section>
-
         <section className="home-listings-section">
           <SectionHeader eyebrow="관심지역 거래" title="지금 보고 있는 매물" action="더보기" onAction={onGoListings} />
           <div className="horizontal-cards">
@@ -134,92 +104,6 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
 
         <button className="chat-fab" onClick={onGoChat}><Bot size={17} /><span>AI 상담</span></button>
       </main>
-    </div>
-  );
-}
-
-function DetailView({ listing, liked, isMine, onBack, onToggleLike, onOpenChat, onSendOffer, onOpenInquiries }: { listing: Listing; liked: boolean; isMine: boolean; onBack: () => void; onToggleLike: () => void; onOpenChat: () => void; onSendOffer: (amount: number, baseAmount: number) => void; onOpenInquiries: () => void }) {
-  const chatRooms = useChatRooms();
-  const inquiryCount = (chatRooms ?? []).filter((room) => room.listingId === listing.id && room.myRole === "seller").length;
-  const [showAi, setShowAi] = useState(false);
-  const [showDoc, setShowDoc] = useState(false);
-  const [showOffer, setShowOffer] = useState(false);
-  const isTrade = listing.type === "trade";
-  const presale = listing.presale;
-  const complex = listing.complex;
-  const funds = presale ? calcFundsBreakdown(presale) : null;
-  const verifiedDocumentCount = presale
-    ? presale.documents.filter((document) => document.status === "verified").length
-    : 0;
-  const verifiedDocumentNames = presale
-    ? presale.documents
-        .filter((document) => document.status === "verified")
-        .map((document) => ({
-          salesContract: "분양계약서",
-          paymentProof: "납부확인서",
-          optionContract: "옵션계약서",
-        }[document.type]))
-        .join(" · ")
-    : "";
-  const sellerInitial = presale?.seller.realName.slice(0, 2) ?? "판매";
-  const offerAmount = funds ? suggestedOffer(funds.totalRequired) : null;
-  const offerParts = offerAmount ? splitWon(offerAmount) : null;
-
-  return (
-    <div className="detail-screen">
-      <div className="detail-hero">
-        <img src={listing.image} alt="" />
-        <div className="hero-shade" />
-        <div className="detail-top-actions">
-          <button className="round-button" onClick={onBack}><ArrowLeft size={19} /></button>
-          <div><button className="round-button" onClick={() => toast("공유 링크를 복사했어요")}><Send size={17} /></button><button className={`round-button ${liked ? "is-liked" : ""}`} onClick={onToggleLike}><Heart size={17} fill={liked ? "currentColor" : "none"} /></button></div>
-        </div>
-        <div className="detail-hero-copy"><StatusPill tone={listing.tagTone}>{listing.tag}</StatusPill><p>{listing.location}</p></div>
-      </div>
-
-      <main className="detail-body">
-        <div className="detail-title-row">
-          <div><h1>{listing.title}</h1><p className="detail-price">{listing.price}</p></div>
-          <span className="verified-badge"><ShieldCheck size={15} /> {isTrade ? "거래 정보 확인중" : "검증된 정보"}</span>
-        </div>
-
-        {isTrade ? <>
-          <div className="trade-badge-row"><StatusPill tone="green">거래 가능</StatusPill><StatusPill tone="sand">가격 협의 가능</StatusPill><span className="trade-updated"><span className="live-dot" /> 12분 전 업데이트</span></div>
-          <section className="total-funds-card">
-            <div className="funds-heading"><div><p className="eyebrow">거래 요약</p><h2>예상 총 필요자금</h2></div><button onClick={() => setShowAi(true)}><Sparkles size={14} /> 내 자금으로 계산</button></div>
-            <strong className="total-funds">{funds ? formatWon(funds.totalRequired) : "확인 중"}</strong>
-            <div className="funds-breakdown"><div><span>분양가</span><b>{presale ? formatWon(presale.salePrice) : "확인 중"}</b></div><div><span>프리미엄</span><b className="accent-number">{presale ? `+${formatWon(presale.premium)}` : "확인 중"}</b></div><div><span>옵션·확장비</span><b>{presale ? formatWon(presale.optionCost) : "확인 중"}</b></div></div>
-            <p className="funds-caption"><CircleHelp size={13} /> 취득세·중개보수는 포함되지 않은 예상 금액이에요.</p>
-          </section>
-
-          <section className="detail-section payment-section"><SectionHeader eyebrow="자금 계획" title="납부 일정" action="내 자금 입력" onAction={() => setShowAi(true)} /><div className="payment-timeline"><div className="payment-step done"><span className="payment-node"><Check size={12} /></span><div><span>계약 시</span><strong>{funds ? formatWon(funds.atContract) : "확인 중"}</strong><small>프리미엄 포함 · 준비 완료</small></div></div><div className="payment-step current"><span className="payment-node" /><div><span>중도금 승계</span><strong>{presale ? formatWon(presale.paidAmount) : "확인 중"}</strong><small>{complex ? `${complex.moveInMonth.slice(0, 4)}. ${complex.moveInMonth.slice(5)} · 납부 내역` : "납부 내역"}</small></div></div><div className="payment-step"><span className="payment-node" /><div><span>잔금 · 입주</span><strong>{funds ? formatWon(funds.remaining) : "확인 중"}</strong><small>{complex ? `${complex.moveInMonth.slice(0, 4)}. ${complex.moveInMonth.slice(5)} · 입주 예정` : "입주 예정"}</small></div></div></div></section>
-
-          {presale?.trust && (
-            <TrustReportView
-              report={presale.trust}
-              onShowCriteria={() => toast("안전도 산정 기준을 확인했어요")}
-            />
-          )}
-
-          <section className="detail-section document-section"><SectionHeader eyebrow="서류 상태" title="계약 전 꼭 확인할 것" action="전체보기" onAction={() => setShowDoc(true)} /><div className="document-card"><div className="document-icon"><FileCheck2 size={18} /></div><div><strong>확인된 서류 {verifiedDocumentCount} / 3</strong><p>{verifiedDocumentNames || "확인된 서류가 없어요"}</p></div><span className="document-progress"><span /></span></div></section>
-
-          <section className="seller-card"><div className="seller-avatar-large">{sellerInitial}</div><div className="seller-copy"><p className="eyebrow">매도자 신뢰도</p><strong>{presale ? `${presale.seller.identityVerified ? "안심 판매자" : "거래 확인 필요 판매자"} · ${presale.seller.nickname}` : "판매자 확인 중"}</strong><span><ShieldCheck size={12} /> {presale ? `${presale.seller.identityVerified ? "본인 인증" : "본인 인증 필요"} · 거래 이력 ${presale.seller.tradeCount}건` : "판매자 정보를 확인 중이에요"}</span></div><ChevronRight size={16} /></section>
-        </> : <>
-          <div className="detail-stats"><div><span>전용면적</span><strong>59.86㎡</strong></div><div><span>층수</span><strong>최고 29층</strong></div><div><span>등록일</span><strong>{listing.date}</strong></div></div><section className="detail-section"><SectionHeader title="공고 설명" /><p className="detail-description">청약 일정과 자격 조건을 한눈에 확인할 수 있는 공고입니다. 나의 청약 프로필을 기준으로 신청 가능성을 먼저 살펴보고 필요한 서류를 미리 준비해보세요.</p></section><section className="detail-section"><SectionHeader title="주요 정보" /><div className="info-grid"><div><span>입주 예정</span><strong>2028년 2월</strong></div><div><span>분양가</span><strong>8억 2,400만</strong></div><div><span>청약 일정</span><strong>11. 24 ~ 11. 26</strong></div><div><span>공급 규모</span><strong>총 512세대</strong></div></div></section><div className="safety-note"><ShieldCheck size={19} /><div><strong>청약 서류를 미리 준비하세요</strong><p>집콕 AI가 내 프로필 기준 필요 서류를 정리해드려요.</p></div><ChevronRight size={16} /></div>
-        </>}
-      </main>
-
-      <div className={`detail-actions ${isTrade ? "trade-actions" : ""}`}>
-        <button className="action-secondary" onClick={onToggleLike}><Heart size={18} fill={liked ? "currentColor" : "none"} /><span>{liked ? "찜한 매물" : "찜하기"}</span></button>
-        {isTrade && !isMine && <button className="action-offer" onClick={() => setShowOffer(true)}><Tag size={17} /><span>가격 제안</span></button>}
-        {isTrade && <button className="action-primary" onClick={isMine ? onOpenInquiries : onOpenChat}><MessageCircle size={18} /><span>{isMine ? `문의 ${inquiryCount}건` : "판매자와 채팅"}</span></button>}
-        <button className="action-ai" onClick={() => setShowAi(true)}><Bot size={18} /><span>{isTrade ? "이 매물 분석하기" : "AI한테 물어보기"}</span></button>
-        <button className="action-doc" onClick={() => setShowDoc(true)}><FileCheck2 size={18} /><span>계약서류 AI 점검</span></button>
-      </div>
-
-      {showOffer && <div className="sheet-backdrop" onClick={() => setShowOffer(false)}><div className="bottom-sheet offer-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="offer-badge"><Tag size={18} /></div><div><span className="eyebrow">안전한 가격 제안</span><h2>판매자에게 제안할 금액을 입력하세요.</h2></div><button onClick={() => setShowOffer(false)}><X size={18} /></button></div><div className="offer-price-box"><span>현재 총 매수가</span><strong>{funds ? formatWon(funds.totalRequired) : "확인 중"}</strong><div><span>내 제안가</span><b>{offerParts ? offerParts.head : "확인 중"} <em>{offerParts?.tail}</em></b></div></div><button className="upload-button" onClick={() => { setShowOffer(false); if (offerAmount && funds) onSendOffer(offerAmount, funds.totalRequired); }}>가격 제안 보내기</button><div className="sheet-footnote"><ShieldCheck size={14} /> 상대방에게는 제안가와 메시지만 전달돼요.</div></div></div>}
-      {showAi && <div className="sheet-backdrop" onClick={() => setShowAi(false)}><div className="bottom-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="ai-badge"><Bot size={18} /></div><div><span className="eyebrow">집콕 AI 거래 분석</span><h2>{isTrade ? "이 거래, 지금 진행해도 될까요?" : "이 공고, 나에게 맞을까요?"}</h2></div><button onClick={() => setShowAi(false)}><X size={18} /></button></div><div className="question-list"><button onClick={() => toast("AI가 자금 계획을 정리하고 있어요")}>내 자금으로 가능한 거래일까?<ChevronRight size={16} /></button><button onClick={() => toast("AI가 주변 거래가를 비교하고 있어요")}>프리미엄이 적정한지 비교해줘<ChevronRight size={16} /></button><button onClick={() => toast("AI가 계약 리스크를 분석하고 있어요")}>계약할 때 주의할 점은?<ChevronRight size={16} /></button></div><div className="ai-input"><span>매물에 대해 자유롭게 물어보세요</span><button><Send size={16} /></button></div></div></div>}
-      {showDoc && <div className="sheet-backdrop" onClick={() => setShowDoc(false)}><div className="bottom-sheet doc-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="doc-badge"><FileCheck2 size={18} /></div><div><span className="eyebrow">서류 안전 점검</span><h2>{isTrade ? "확인할 서류를 선택하세요." : "계약서류를 올려주세요."}</h2></div><button onClick={() => setShowDoc(false)}><X size={18} /></button></div><p>{isTrade ? "분양계약서와 납부확인서를 올리면 집콕 AI가 권리관계와 특약을 먼저 체크해드려요." : "필요 서류와 자격 조건을 AI가 먼저 정리해드려요."}</p><button className="upload-button" onClick={() => toast("파일 선택 기능을 준비 중이에요")}><Plus size={18} />계약서류 업로드</button><div className="sheet-footnote"><ShieldCheck size={14} /> 업로드한 서류는 점검 후 안전하게 삭제돼요.</div></div></div>}
     </div>
   );
 }
@@ -258,7 +142,6 @@ export default function Home() {
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [showNews, setShowNews] = useState(false);
   const [chatRoomId, setChatRoomId] = useState<number | null>(null);
   const [authPrompt, setAuthPrompt] = useState<{ reason: string; then?: () => void } | null>(null);
   const { user } = useAuth();
@@ -348,7 +231,7 @@ export default function Home() {
       })
       .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "대화방을 열지 못했어요"));
   });
-  const sendOfferForListing = (listing: Listing, amount: number, _baseAmount: number) => requireLogin("가격을 제안하려면 로그인이 필요해요", () => {
+  const sendOfferForListing = (listing: Listing, amount: number) => requireLogin("가격을 제안하려면 로그인이 필요해요", () => {
     void ensureRoom(listing)
       .then((room) => chatRepository.sendOffer(room.id, amount).then(() => room))
       .then((room) => {
@@ -400,14 +283,6 @@ export default function Home() {
     );
   }
 
-  if (showNews) {
-    return (
-      <div className="app-frame">
-        <NewsScreen onClose={() => setShowNews(false)} />
-      </div>
-    );
-  }
-
   if (showProfile) {
     return (
       <div className="app-frame">
@@ -444,10 +319,10 @@ export default function Home() {
 
   if (selectedListing) {
     const currentListing = { ...selectedListing, liked: likedIds.includes(selectedListing.id) };
-    return <div className="app-frame"><DetailView listing={currentListing} liked={currentListing.liked ?? false} isMine={isMyListing(currentListing)} onBack={() => setSelectedListing(null)} onToggleLike={toggleLike} onOpenChat={() => openChatForListing(currentListing)} onSendOffer={(amount, baseAmount) => sendOfferForListing(currentListing, amount, baseAmount)} onOpenInquiries={() => openInquiries(currentListing)} /></div>;
+    return <div className="app-frame"><ListingDetail listing={currentListing} liked={currentListing.liked ?? false} isMine={isMyListing(currentListing)} onBack={() => setSelectedListing(null)} onToggleLike={toggleLike} onGoChat={() => openChatForListing(currentListing)} onSendOffer={(amount) => sendOfferForListing(currentListing, amount)} onOpenInquiries={() => openInquiries(currentListing)} /></div>;
   }
 
   const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenNews={() => setShowNews(true)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={changeTab} /></div>;
 }
