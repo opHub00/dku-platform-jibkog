@@ -1,5 +1,5 @@
 import type { AuthUser } from "../../client/src/features/auth/types";
-import type { ChatMessage, ChatRole, ChatRoom } from "../../client/src/features/chat/types";
+import type { ChatRole, TradeChatMessage as ChatMessage, TradeChatRoom as ChatRoom } from "../../client/src/features/chat/tradeTypes";
 import { isResaleRestricted } from "../../client/src/features/presale/lib/resale";
 import { formatWon } from "../../client/src/features/presale/lib/format";
 import type { Complex, PresaleDocument, PresaleListing, Sido, TrustReport } from "../../client/src/features/presale/types";

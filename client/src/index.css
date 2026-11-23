@@ -84,7 +84,10 @@ img { display: block; max-width: 100%; }
 .green-dot { background: var(--sage); }.sand-dot { background: var(--sand); }
 .alert-row > div { min-width: 0; flex: 1; }.alert-row strong { display: block; overflow: hidden; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -.035em; }.alert-row p { margin: 4px 0 0; color: var(--ink-soft); font-size: 11px; }.alert-time { color: var(--muted); font-size: 10px; white-space: nowrap; }
 .horizontal-cards { display: flex; gap: 12px; overflow-x: auto; padding: 1px 0 5px; scrollbar-width: none; }.horizontal-cards::-webkit-scrollbar { display: none; }.horizontal-cards .listing-card { width: 190px; min-width: 190px; }
-.chat-fab { position: fixed; right: max(20px, calc((100vw - 430px) / 2 + 20px)); bottom: 78px; z-index: 8; display: flex; align-items: center; gap: 7px; padding: 11px 13px; border-radius: 22px; color: #fff; background: var(--navy); box-shadow: 0 10px 22px rgba(41, 65, 81, .25); font-size: 11px; font-weight: 750; }
+.chat-fab-wrap { position: fixed; right: max(20px, calc((100vw - 430px) / 2 + 20px)); bottom: 78px; z-index: 8; display: flex; align-items: center; gap: 9px; }
+.chat-fab { display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; flex: 0 0 auto; border-radius: 50%; color: #fff; background: var(--navy); box-shadow: 0 10px 22px rgba(41, 65, 81, .25); }
+.chat-fab-teaser { padding: 9px 12px; border-radius: 12px; color: var(--ink); background: #fff; box-shadow: 0 6px 16px rgba(38,52,46,.14); font-size: 11px; font-weight: 650; white-space: nowrap; animation: chat-fab-teaser-in .2s ease; }
+@keyframes chat-fab-teaser-in { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: translateX(0); } }
 
 .bottom-nav { position: fixed; bottom: 0; left: 50%; z-index: 10; display: flex; align-items: center; justify-content: space-around; width: min(100%, 430px); height: 68px; padding: 5px 13px max(5px, env(safe-area-inset-bottom)); transform: translateX(-50%); border-top: 1px solid rgba(229, 234, 231, .95); background: rgba(250, 251, 249, .95); backdrop-filter: blur(14px); }
 .nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 64px; height: 55px; color: #9aa39f; font-size: 10px; font-weight: 650; transition: color .18s ease, transform .18s ease; }.nav-item.active { color: var(--sage-dark); }.nav-item.active .nav-icon { transform: translateY(-1px); }.nav-icon { display: flex; align-items: center; justify-content: center; transition: transform .18s ease; }.nav-dot { position: absolute; top: 8px; right: 16px; width: 5px; height: 5px; border: 1px solid #f7f8f6; border-radius: 50%; background: var(--sage); }
@@ -103,7 +106,28 @@ img { display: block; max-width: 100%; }
 .segment-control { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 17px; padding: 4px; border-radius: 11px; background: #e8ede9; }.segment-control button { padding: 10px 6px; border-radius: 8px; color: var(--muted); font-size: 11px; font-weight: 750; }.segment-control button.active { color: var(--ink); background: #fff; box-shadow: 0 2px 6px rgba(31,46,39,.08); }.segment-control span { margin-left: 3px; color: var(--sage-dark); font-size: 10px; }.posted-view { display: flex; flex-direction: column; gap: 13px; }.posted-summary { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-radius: 14px; background: var(--navy); color: #fff; }.posted-summary .eyebrow { color: #b4d2c5; }.posted-summary strong { display: block; margin: 7px 0 3px; font-size: 28px; letter-spacing: -.06em; }.posted-summary p { margin: 0; color: rgba(255,255,255,.68); font-size: 10px; }.posted-chart { display: flex; align-items: flex-end; gap: 5px; height: 50px; padding-top: 10px; }.posted-chart span { width: 7px; border-radius: 8px 8px 2px 2px; background: rgba(190, 220, 205, .34); }.posted-chart span:nth-child(1) { height: 21px; }.posted-chart span:nth-child(2) { height: 34px; }.posted-chart span:nth-child(3) { height: 27px; }.posted-chart span:nth-child(4) { height: 43px; background: #9bc1ab; }.posted-chart span:nth-child(5) { height: 38px; }.posted-card { display: flex; gap: 11px; padding: 10px; border: 1px solid #e4e9e5; border-radius: 14px; background: #fff; }.posted-card-image { position: relative; width: 104px; height: 101px; flex: 0 0 auto; overflow: hidden; border-radius: 9px; }.posted-card-image img { width: 100%; height: 100%; object-fit: cover; }.posted-card-image .status-pill { position: absolute; top: 7px; left: 7px; }.posted-card > div:last-child { min-width: 0; padding-top: 2px; }.posted-card h3 { margin: 7px 0 5px; }.posted-card .listing-price { font-size: 13px; }.posted-actions { display: flex; gap: 5px; margin-top: 11px; }.posted-actions button { padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink-soft); font-size: 9px; }.add-listing-button { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 44px; margin-top: 18px; border: 1px dashed #adc0b4; border-radius: 11px; color: var(--sage-dark); background: #f0f6f1; font-size: 11px; font-weight: 750; }.add-listing-button svg:last-child { margin-left: 2px; }
 .my-main { padding-bottom: 35px; }.profile-card { padding: 17px; border-radius: 17px; color: #fff; background: var(--navy); }.profile-top { display: flex; align-items: center; gap: 11px; }.profile-avatar { width: 45px; height: 45px; border-radius: 15px; color: var(--navy); background: #dcebe2; font-size: 11px; }.profile-top > div:nth-child(2) { min-width: 0; flex: 1; }.profile-top h2 { margin: 0 0 4px; font-size: 16px; letter-spacing: -.05em; }.profile-top p { margin: 0; color: rgba(255,255,255,.62); font-size: 10px; }.profile-top > button { color: rgba(255,255,255,.75); }.profile-divider { height: 1px; margin: 18px 0 14px; background: rgba(255,255,255,.14); }.profile-stats { display: grid; grid-template-columns: repeat(3, 1fr); }.profile-stats div { display: flex; flex-direction: column; gap: 5px; }.profile-stats div + div { padding-left: 12px; border-left: 1px solid rgba(255,255,255,.14); }.profile-stats span { color: rgba(255,255,255,.6); font-size: 10px; }.profile-stats strong { font-size: 15px; }.my-section { margin-top: 28px; }.my-menu { border-top: 1px solid var(--line); }.my-menu-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 0; border-bottom: 1px solid var(--line); text-align: left; }.my-menu-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 9px; color: var(--sage-dark); background: var(--sage-pale); }.my-menu-row > div:nth-child(2) { min-width: 0; flex: 1; }.my-menu-row strong { display: block; font-size: 12px; }.my-menu-row span { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }.my-menu-row > svg { color: #a4afaa; }.membership-card { display: flex; align-items: center; gap: 10px; margin-top: 26px; padding: 14px; border: 1px solid #e7dccb; border-radius: 14px; background: var(--sand-pale); }.membership-icon { display: flex; align-items: center; justify-content: center; width: 33px; height: 33px; border-radius: 10px; color: #926b3e; background: rgba(255,255,255,.65); }.membership-card > div:nth-child(2) { min-width: 0; flex: 1; }.membership-card .eyebrow { color: #9b794e; }.membership-card strong { display: block; font-size: 11px; }.membership-card p { margin: 4px 0 0; color: #a68761; font-size: 9px; }.membership-card > button { color: #9b794e; }.my-footer { display: flex; gap: 12px; margin-top: 27px; color: #a3aba7; font-size: 9px; }.my-footer span { margin-right: auto; }.my-footer button { color: #89928d; }
 
-@media (min-width: 700px) { .app-frame { min-height: 0; height: min(860px, calc(100vh - 48px)); height: min(860px, calc(100dvh - 48px)); margin: 24px auto; overflow: hidden; border-radius: 28px; box-shadow: 0 18px 60px rgba(38,52,46,.13); transform: translateZ(0); } .app-frame > .screen-content, .app-frame > .detail-screen { height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; } .app-frame > .screen-content::-webkit-scrollbar, .app-frame > .detail-screen::-webkit-scrollbar { display: none; } .bottom-nav { bottom: 0; border-radius: 0 0 28px 28px; } .chat-fab { right: 20px; } .detail-actions { bottom: 0; border-radius: 0 0 28px 28px; } }
+.chatroom-screen { display: flex; flex-direction: column; min-height: 100vh; background: var(--paper); }
+.chatroom-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.chatroom-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.chatroom-title strong { font-size: 14px; letter-spacing: -.03em; }
+.chatroom-title span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.chatroom-pinned { display: flex; align-items: center; gap: 10px; margin: 12px 16px 0; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.chatroom-pinned img { width: 36px; height: 36px; border-radius: 9px; object-fit: cover; background: var(--surface-soft); }
+.chatroom-pinned span { display: block; color: var(--muted); font-size: 10px; }
+.chatroom-pinned strong { display: block; margin-top: 2px; font-size: 12px; }
+.chatroom-messages { flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 100px; }
+.bubble-row { display: flex; flex-direction: column; max-width: 78%; gap: 4px; }
+.bubble-row.other { align-self: flex-start; align-items: flex-start; }
+.bubble-row.me { align-self: flex-end; align-items: flex-end; }
+.bubble { padding: 10px 13px; border-radius: 15px; font-size: 12px; line-height: 1.5; letter-spacing: -.02em; }
+.bubble-row.other .bubble { border-bottom-left-radius: 4px; color: var(--ink); background: #fff; border: 1px solid var(--line); }
+.bubble-row.me .bubble { border-bottom-right-radius: 4px; color: #fff; background: var(--sage-dark); }
+.bubble-time { padding: 0 2px; color: var(--muted); font-size: 9px; }
+.chatroom-input-bar { position: fixed; bottom: 0; left: 50%; z-index: 12; display: flex; align-items: center; gap: 8px; width: min(100%, 430px); padding: 10px 14px max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%); border-top: 1px solid var(--line); background: rgba(250,251,249,.97); backdrop-filter: blur(14px); }
+.chatroom-input { flex: 1; min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 20px; background: #fff; font-size: 12px; }
+.chatroom-send { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%; color: #fff; background: var(--sage-dark); }
+
+@media (min-width: 700px) { .app-frame { min-height: 0; height: min(860px, calc(100vh - 48px)); height: min(860px, calc(100dvh - 48px)); margin: 24px auto; overflow: hidden; border-radius: 28px; box-shadow: 0 18px 60px rgba(38,52,46,.13); transform: translateZ(0); } .app-frame > .screen-content, .app-frame > .detail-screen, .app-frame > .chatroom-screen { height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; } .app-frame > .screen-content::-webkit-scrollbar, .app-frame > .detail-screen::-webkit-scrollbar, .app-frame > .chatroom-screen::-webkit-scrollbar { display: none; } .bottom-nav { bottom: 0; border-radius: 0 0 28px 28px; } .chat-fab-wrap { right: 20px; } .detail-actions { bottom: 0; border-radius: 0 0 28px 28px; } }
 
 /* 거래권 고도화 */
 .trade-badge-row { display: flex; align-items: center; gap: 6px; margin: 15px 0 16px; }
@@ -140,22 +164,23 @@ img { display: block; max-width: 100%; }
  * - 청약공고 상세는 첫째 줄 찜 1 : AI 1.5, 둘째 줄 서류 버튼이 전체 폭을 쓴다.
  */
 .detail-actions { display: flex; flex-wrap: wrap; }
-.detail-actions > button { flex: 1 1 0; padding-inline: 4px; white-space: nowrap; }
+/* 기본 폭 = 버튼의 최소 상자(여백+테두리 8px) × 비율. 이렇게 두면 남는 폭이 비율대로 나뉘어 버튼 폭이 정확히 1 : 1.45 / 1 : 1.5가 된다.
+   줄을 나눌 때는 실제 글자 폭이 기준이라 좁은 화면 동작은 같다. */
+.detail-actions > button { flex: 1 1 8px; padding-inline: 4px; white-space: nowrap; }
 /* 테두리(1px)가 있는 버튼은 안쪽 여백을 1px 줄여 모든 버튼의 기본 폭(테두리+여백 8px)을 같게 맞춘다. 비율이 정확히 1:1:1.45가 된다. */
 .detail-actions > .action-secondary { padding-inline: 3px; }
-.detail-actions > .action-primary { flex-grow: 1.5; }
+.detail-actions > .action-primary { flex: 1.5 1 12px; }
 /*
  * 분양권 상세(main 디자인: 2줄 × 3칸, 1 : 1 : 1.45)
  * - 첫째 줄 찜·제안·채팅, 둘째 줄 분석·서류·조건 맞춰보기. 둘 다 1 : 1 : 1.45로 나눈다.
  * - ::before가 두 줄 사이 줄바꿈(높이 0, 전체 폭)이라 버튼 수가 달라도(내 매물은 제안 버튼이 없음) 줄 구성이 섞이지 않는다.
  * - 줄 간격은 row-gap 대신 둘째 줄 버튼의 margin-top으로 준다(줄바꿈 줄에 간격이 두 번 생기지 않게).
- * - 기본 폭에서 1px을 빼 소수점 반올림으로 줄이 넘어가지 않게 하고, 남는 폭은 비율(flex-grow)대로 채운다.
  */
 .trade-actions { row-gap: 0; }
 .trade-actions::before { content: ""; order: 2; flex: 0 0 100%; height: 0; }
-.trade-actions > .action-secondary, .trade-actions > .action-offer { order: 1; flex: 1 1 calc((100% - 16px) / 3.45 - 1px); }
-.trade-actions > .action-primary { order: 1; flex: 1.45 1 calc((100% - 16px) * 1.45 / 3.45 - 1px); }
-.trade-actions > .action-ai, .trade-actions > .action-doc { order: 3; flex: 1 1 calc((100% - 16px) / 3.45 - 1px); margin-top: 8px; }
-.trade-actions > .action-match { order: 3; flex: 1.45 1 calc((100% - 16px) * 1.45 / 3.45 - 1px); margin-top: 8px; }
-.detail-actions:not(.trade-actions) > .action-ai { flex-grow: 1.5; }
+.trade-actions > .action-secondary, .trade-actions > .action-offer { order: 1; flex: 1 1 8px; }
+.trade-actions > .action-primary { order: 1; flex: 1.45 1 11.6px; }
+.trade-actions > .action-ai, .trade-actions > .action-doc { order: 3; flex: 1 1 8px; margin-top: 8px; }
+.trade-actions > .action-match { order: 3; flex: 1.45 1 11.6px; margin-top: 8px; }
+.detail-actions:not(.trade-actions) > .action-ai { flex: 1.5 1 12px; }
 .detail-actions:not(.trade-actions) > .action-doc { flex-basis: 100%; }

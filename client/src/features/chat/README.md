@@ -1,20 +1,18 @@
-# 분양권 거래 채팅 (features/chat)
+# 채팅 (features/chat)
+
+화면은 프론트 담당이 만든 `pages/ChatSessionList.tsx`(AI 상담 목록)와 `pages/ChatRoom.tsx`(대화방)를 쓴다. 이 폴더에는 데이터와 연결 코드만 둔다.
 
 | 파일 | 역할 |
 |---|---|
-| `types.ts` | 대화방(`ChatRoom`), 메시지(`ChatMessage`: text / offer / system), 거래 상태. 서버와 함께 쓴다 |
-| `api/chatRepository.ts` | **저장소 인터페이스 `ChatRepository`** + HTTP 구현체(개발 서버 API) |
-| `lib/useChat.ts` | `useChatRooms`, `useChatRoom`(구독 포함), `useKeyboardInset` |
-| `lib/format.ts`, `lib/names.ts` | 시간·금액 표시, 아바타 글자 |
-| `components/ChatRoomScreen.tsx` | 대화 화면 |
+| `types.ts` | **화면 타입**(프론트 담당 기준): `ChatThread`, `ChatMessage`. 거래 채팅에 필요한 것만 선택 필드로 추가했다(거래 상태, 안 읽은 수, 내 역할, 가격 제안, 메시지 종류) |
+| `tradeTypes.ts` | 거래 채팅 **서버 응답 형식**(`TradeChatRoom`, `TradeChatMessage`). 서버(`server/api`)와 함께 쓴다 |
+| `lib/adapters.ts` | 서버 형식 → 화면 타입 변환(`toChatThread`, `toChatMessage`) |
+| `api/chatRepository.ts` | 거래 채팅 저장소: 개발 서버 API + SSE 실시간(docs/api.md) |
+| `api/aiChatRepository.ts` | AI 상담 저장소 인터페이스. 지금은 더미 대화(`data/threads.ts`). AI를 붙일 때 구현체만 바꾼다 |
+| `components/TradeChatRoom.tsx` | 서버 대화방을 `pages/ChatRoom.tsx`의 `ChatRoomView`에 연결(읽음 처리, 수락·거절, 거래 완료) |
+| `lib/useChat.ts` | `useChatRooms`(거래), `useChatRoom`, `useAiSessions`(AI), `useKeyboardInset` |
+| `chat.css` | 대화방 안 거래 기능 스타일(`ch-`): 가격 제안 카드, 시스템 안내, 외부 연락 경고 |
 
-- 화면은 `chatRepository`(인터페이스)만 쓴다.
-- 구매자·판매자 역할과 권한은 **서버가 로그인 정보로 판단**한다(`room.myRole`).
-- 실시간: 서버 SSE(`/api/events`)의 `chat.changed`를 받아 해당 방을 다시 불러온다(`features/auth/lib/serverEvents.ts`). 끊기면 브라우저가 자동으로 다시 연결하고, 다시 연결되면 전체를 다시 불러온다.
-- API 명세: [docs/api.md](../../../../docs/api.md). DB로 바꾸는 방법: [docs/db-requests.md](../../../../docs/db-requests.md).
-
-## Supabase Realtime으로 바꾸려면
-지금 서버 구조에서는 **서버 저장소(`server/store`)를 DB로 바꾸는 것**이 우선이다(docs/db-requests.md). 실시간까지 Supabase로 옮긴다면 다음과 같다.
-- `chatRepository.subscribe`에서 `onServerEvent("chat.changed")` 대신 `supabase.channel(...).on('postgres_changes', { table: 'trade_messages' }, ...)`를 구독한다.
-- 수락·거절·완료처럼 여러 행을 함께 바꾸는 작업은 RPC(Postgres 함수)로 옮긴다. 지금 `server/api/services.ts`의 `respondOffer`, `completeChat` 검사 로직을 그대로 옮기면 된다.
-- 행 단위 보안(RLS)은 docs/db-requests.md 4번 표와 같게 맞춘다.
+- 구매자·판매자 역할과 권한은 서버가 로그인 정보로 판단한다(`thread.myRole`).
+- 실시간: 서버 SSE `chat.changed`를 받아 해당 방을 다시 불러온다. 끊기면 자동으로 다시 연결하고, 다시 연결되면 전체를 다시 불러온다.
+- DB로 바꾸는 방법: [docs/db-requests.md](../../../../docs/db-requests.md)

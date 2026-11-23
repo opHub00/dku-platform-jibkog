@@ -33,14 +33,17 @@ import { ProfileForm } from "@/features/profile/components/ProfileForm";
 import { useProfile } from "@/features/profile/lib/useProfile";
 import { greetingName, interestHeadline, profileSummary, regionKey, shortName } from "@/features/profile/lib/profileText";
 import { chatRepository } from "@/features/chat/api/chatRepository";
-import { ChatRoomScreen } from "@/features/chat/components/ChatRoomScreen";
-import { formatChatListTime, splitWon, suggestedOffer } from "@/features/chat/lib/format";
+import { toChatThread } from "@/features/chat/lib/adapters";
 import { avatarText, ROLE_LABELS } from "@/features/chat/lib/names";
 import { AuthScreen } from "@/features/auth/components/AuthScreen";
 import { logout, useAuth } from "@/features/auth/lib/session";
-import { useChatRooms } from "@/features/chat/lib/useChat";
-import { CHAT_STATUS_LABELS, CHAT_STATUS_TONES } from "@/features/chat/types";
+import { useAiSessions, useChatRooms } from "@/features/chat/lib/useChat";
 import "@/features/chat/chat.css";
+import { CHAT_STATUS_LABELS, CHAT_STATUS_TONES } from "@/features/chat/tradeTypes";
+import { aiChatRepository } from "@/features/chat/api/aiChatRepository";
+import { TradeChatRoom } from "@/features/chat/components/TradeChatRoom";
+import { ChatRoomView } from "@/pages/ChatRoom";
+import { ChatSessionList } from "@/pages/ChatSessionList";
 
 function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
@@ -49,6 +52,11 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
   const firstInterestTradeCount = firstInterest
     ? tradeListings.filter((listing) => listing.district === regionKey(firstInterest) && listing.presale?.status === "selling").length
     : 0;
+  const [showChatTeaser, setShowChatTeaser] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setShowChatTeaser(false), 3500);
+    return () => clearTimeout(timer);
+  }, []);
   return (
     <div className="screen-content">
       <header className="topbar">
@@ -102,17 +110,21 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
           </div>
         </section>
 
-        <button className="chat-fab" onClick={onGoChat}><Bot size={17} /><span>AI 상담</span></button>
+        <div className="chat-fab-wrap">
+          {showChatTeaser && <div className="chat-fab-teaser">궁금한 점, AI한테 물어보세요</div>}
+          <button className="chat-fab" onClick={onGoChat} aria-label="AI 상담"><Bot size={19} /></button>
+        </div>
       </main>
     </div>
   );
 }
 
-function ChatView({ listingFilter, onOpenRoom, onLogin }: { listingFilter: { id: number; title: string } | null; onOpenRoom: (roomId: number) => void; onLogin: () => void }) {
+function ChatView({ listingFilter, onOpenRoom, onLogin, onOpenSessions }: { listingFilter: { id: number; title: string } | null; onOpenRoom: (roomId: number) => void; onLogin: () => void; onOpenSessions: () => void }) {
   const { user } = useAuth();
   const allRooms = useChatRooms();
-  const chatRooms = (allRooms ?? []).filter((room) => !listingFilter || (room.listingId === listingFilter.id && room.myRole === "seller"));
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div><button className="icon-button"><Search size={19} /></button></header><main className="chat-main"><button className="ai-thread" onClick={() => toast("AI 상담 스레드를 열었어요")}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>{listingFilter ? `${listingFilter.title} 문의` : "분양권 거래"}</span><span>{chatRooms.length}개</span></div><div className="chat-list">{allRooms && chatRooms.length === 0 && <p className="ch-empty">{!user ? <>로그인하면 거래 채팅을 볼 수 있어요 <button className="text-action" onClick={onLogin}>로그인</button></> : listingFilter ? "아직 이 매물에 온 문의가 없어요" : "아직 대화가 없어요. 매물 상세에서 판매자와 채팅을 시작해보세요"}</p>}{chatRooms.map((room) => { const otherLabel = ROLE_LABELS[room.myRole === "buyer" ? "seller" : "buyer"]; const unread = room.unread; return <button key={room.id} className="chat-row" onClick={() => onOpenRoom(room.id)}><div className="thread-avatar seller-avatar">{avatarText(room.counterpart.nickname)}</div><div className="thread-copy"><div><strong>{room.listingTitle} · {otherLabel}</strong><StatusPill tone={CHAT_STATUS_TONES[room.status]}>{CHAT_STATUS_LABELS[room.status]}</StatusPill></div><p>{room.lastMessage?.preview ?? "아직 메시지가 없어요"}</p></div><div className="chat-meta"><span>{formatChatListTime(room.lastMessage?.at ?? room.createdAt)}</span>{unread > 0 && <b>{unread > 9 ? "9+" : unread}</b>}</div></button>; })}</div><div className="chat-tip"><CircleHelp size={17} /><div><strong>거래 채팅은 안심번호로 보호돼요</strong><p>상대방과 주고받은 서류는 계약서류 점검 이력에 저장됩니다.</p></div></div></main></div>;
+  // 서버 대화방 → 프론트 담당 화면 타입(ChatThread)
+  const chatThreads = (allRooms ?? []).filter((room) => !listingFilter || (room.listingId === listingFilter.id && room.myRole === "seller")).map((room) => toChatThread(room));
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div><button className="icon-button"><Search size={19} /></button></header><main className="chat-main"><button className="ai-thread" onClick={onOpenSessions}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>{listingFilter ? `${listingFilter.title} 문의` : "분양권 거래"}</span><span>{chatThreads.length}개</span></div><div className="chat-list">{allRooms && chatThreads.length === 0 && <p className="ch-empty">{!user ? <>로그인하면 거래 채팅을 볼 수 있어요 <button className="text-action" onClick={onLogin}>로그인</button></> : listingFilter ? "아직 이 매물에 온 문의가 없어요" : "아직 대화가 없어요. 매물 상세에서 판매자와 채팅을 시작해보세요"}</p>}{chatThreads.map((thread) => { const last = thread.messages[thread.messages.length - 1]; const unread = thread.unread ?? 0; return <button key={thread.id} className="chat-row" onClick={() => thread.roomId !== undefined && onOpenRoom(thread.roomId)}><div className="thread-avatar seller-avatar">{avatarText(thread.name)}</div><div className="thread-copy"><div><strong>{thread.listingTitle} · {ROLE_LABELS[thread.myRole === "seller" ? "buyer" : "seller"]}</strong>{thread.status && <StatusPill tone={CHAT_STATUS_TONES[thread.status]}>{CHAT_STATUS_LABELS[thread.status]}</StatusPill>}</div><p>{last?.text ?? "아직 메시지가 없어요"}</p></div><div className="chat-meta"><span>{last?.time ?? ""}</span>{unread > 0 && <b>{unread > 9 ? "9+" : unread}</b>}</div></button>; })}</div><div className="chat-tip"><CircleHelp size={17} /><div><strong>거래 채팅은 안심번호로 보호돼요</strong><p>상대방과 주고받은 서류는 계약서류 점검 이력에 저장됩니다.</p></div></div></main></div>;
 }
 
 function FavoritesView({ listings: favoriteListings, onOpenListing, onToggleLike, onOpenRegister, onOpenInquiries }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onToggleLike: (listing: Listing) => void; onOpenRegister: () => void; onOpenInquiries: (listing: Listing) => void }) {
@@ -140,6 +152,9 @@ function MyView({ onOpenProfile, onLogin }: { onOpenProfile: () => void; onLogin
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const aiSessions = useAiSessions();
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [showAiSessions, setShowAiSessions] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [chatRoomId, setChatRoomId] = useState<number | null>(null);
@@ -218,7 +233,14 @@ export default function Home() {
   const toggleLike = () => {
     if (selectedListing) toggleListingLike(selectedListing);
   };
-  const goChat = () => { setSelectedListing(null); setActiveTab("chat"); };
+  // AI 상담 버튼: 가장 최근 AI 대화를 연다(프론트 담당 동작)
+  const goChat = () => { setSelectedListing(null); setSelectedThreadId(aiSessions[0]?.id ?? null); };
+  const openAiSessions = () => setShowAiSessions(true);
+  const startNewAiSession = () => {
+    const session = aiChatRepository.startSession();
+    setShowAiSessions(false);
+    setSelectedThreadId(session.id);
+  };
   const changeTab = (tab: Tab) => { setChatFilter(null); setActiveTab(tab); };
   const isMyListing = (listing: Listing) => listing.type === "trade" && (listing.presale?.isMine === true || postedListings.some((posted) => posted.id === listing.id));
   /** 같은 매물·같은 구매자면 서버가 기존 대화방을 돌려준다 */
@@ -312,7 +334,7 @@ export default function Home() {
   if (chatRoomId) {
     return (
       <div className="app-frame">
-        <ChatRoomScreen roomId={chatRoomId} onClose={() => setChatRoomId(null)} onOpenListing={(listingId) => void openListingById(listingId)} />
+        <TradeChatRoom roomId={chatRoomId} onBack={() => setChatRoomId(null)} onOpenListing={(listingId) => void openListingById(listingId)} />
       </div>
     );
   }
@@ -322,7 +344,33 @@ export default function Home() {
     return <div className="app-frame"><ListingDetail listing={currentListing} liked={currentListing.liked ?? false} isMine={isMyListing(currentListing)} onBack={() => setSelectedListing(null)} onToggleLike={toggleLike} onGoChat={() => openChatForListing(currentListing)} onSendOffer={(amount) => sendOfferForListing(currentListing, amount)} onOpenInquiries={() => openInquiries(currentListing)} /></div>;
   }
 
+  const activeThread = selectedThreadId ? aiSessions.find((thread) => thread.id === selectedThreadId) ?? null : null;
+  if (activeThread) {
+    return (
+      <div className="app-frame">
+        <ChatRoomView
+          thread={activeThread}
+          onBack={() => setSelectedThreadId(null)}
+          onSend={(text) => aiChatRepository.sendMessage(activeThread.id, text)}
+        />
+      </div>
+    );
+  }
+
+  if (showAiSessions) {
+    return (
+      <div className="app-frame">
+        <ChatSessionList
+          sessions={aiSessions}
+          onOpenSession={(session) => { setShowAiSessions(false); setSelectedThreadId(session.id); }}
+          onNewSession={startNewAiSession}
+          onBack={() => setShowAiSessions(false)}
+        />
+      </div>
+    );
+  }
+
   const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={changeTab} /></div>;
 }

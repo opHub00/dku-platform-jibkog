@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/features/auth/lib/session";
+import { aiChatRepository } from "../api/aiChatRepository";
 import { chatRepository } from "../api/chatRepository";
-import type { ChatMessage, ChatRoom } from "../types";
+import type { ChatThread } from "../types";
+import type { TradeChatMessage as ChatMessage, TradeChatRoom as ChatRoom } from "../tradeTypes";
 
 /** 내 대화방 목록. 로그인 안 했으면 빈 목록. 이 기기·다른 기기에서 바뀌면 다시 읽는다. */
 export function useChatRooms(): ChatRoom[] | null {
@@ -69,4 +71,11 @@ export function useKeyboardInset(): number {
     };
   }, []);
   return inset;
+}
+
+/** AI 상담 대화 목록(지금은 더미). 바뀌면 다시 읽는다. */
+export function useAiSessions(): ChatThread[] {
+  const [sessions, setSessions] = useState(aiChatRepository.listSessions());
+  useEffect(() => aiChatRepository.subscribe(() => setSessions(aiChatRepository.listSessions())), []);
+  return sessions;
 }

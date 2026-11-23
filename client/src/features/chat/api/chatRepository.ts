@@ -1,6 +1,6 @@
 import { apiRequest, field } from "@/features/auth/api/httpClient";
 import { onServerEvent } from "@/features/auth/lib/serverEvents";
-import type { ChatChangeEvent, ChatMessage, ChatRole, ChatRoom, ChatRoomStatus, OfferStatus } from "../types";
+import type { ChatChangeEvent, ChatRole, ChatRoomStatus, OfferStatus, TradeChatMessage as ChatMessage, TradeChatRoom as ChatRoom } from "../tradeTypes";
 
 /**
  * 분양권 거래 채팅 저장소 인터페이스. 화면은 이것만 쓴다.
