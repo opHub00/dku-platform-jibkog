@@ -39,6 +39,16 @@ python fetch_data.py --house-manage-no 2026000560 --notice-number 2026000560 --l
 python fetch_data.py --help
 ```
 
+## Gemini 최근 청약 뉴스 목업
+
+최근 21일 동안 발표된 청약홈 공고 중 접수 중이거나 접수 예정인 공고를 조회해 `api/generated_news.json`에 뉴스를 저장합니다.
+
+프로젝트 최상위 폴더에서 실행하세요. `--region`을 생략하면 서울을 조회합니다.
+
+```powershell
+python -X utf8 -B .\api\generating_recent_news.py --region 경기
+```
+
 ## 지도에 사용하는 데이터
 
 청약 공고 위치를 표시하려면 한 공고의 `coordinates.latitude`와 `coordinates.longitude`를 사용하세요. `title`, `address`, `applications_open`, `applications_close`, `total_units`는 핀을 눌렀을 때 보여줄 수 있습니다. `coordinates`가 `null`인 공고는 위치를 확인하기 전까지 지도 핀을 건너뜁니다. 웹 화면에서는 지도 SDK를 연결하고 결과 JSON을 읽어야 합니다. 카카오맵 SDK의 `LatLng`에는 위도, 경도 순으로 넘깁니다. [카카오 지도 Web SDK 가이드](https://apis.map.kakao.com/web/guide/)
