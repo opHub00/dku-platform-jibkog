@@ -129,12 +129,12 @@ export function createHttpPresaleRepository(): PresaleRepository {
     async createListing(input, options) {
       // 판매자는 서버가 로그인 정보로 정한다(본문의 seller는 보내지 않는다)
       const { seller: _seller, ...rest } = input;
-      const json = await apiRequest("/api/listings", { method: "POST", body: { ...rest, ...(options?.trust ? { trust: options.trust } : {}) } });
+      const json = await apiRequest("/api/listings", { method: "POST", body: { ...rest, verification: options?.verification } });
       emit();
       return parseListing(field(json, "listing"));
     },
     async getCurrentSeller() {
-      if (!getAuthState().loaded) await refreshAuth();
+      await refreshAuth();
       const user = getAuthState().user;
       if (!user) throw new AuthRequiredError();
       return { id: user.id, nickname: user.nickname, realName: user.realName ?? user.nickname, identityVerified: user.identityVerified, tradeCount: 0 };

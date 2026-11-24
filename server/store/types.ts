@@ -143,6 +143,7 @@ export interface StoreTx {
   insertUser(row: Omit<UserRow, "id">): Promise<UserRow>;
   findUserById(id: number): Promise<UserRow | null>;
   findUserByEmail(email: string): Promise<UserRow | null>;
+  updateUser(id: number, patch: Partial<Pick<UserRow, "identity_verified">>): Promise<UserRow>;
   // sessions
   insertSession(row: SessionRow): Promise<void>;
   findSession(tokenHash: string): Promise<SessionRow | null>;

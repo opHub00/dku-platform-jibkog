@@ -22,11 +22,13 @@ export function AuthScreen({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
+  const [realName, setRealName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const emailId = useId();
   const passwordId = useId();
   const nicknameId = useId();
+  const realNameId = useId();
 
   async function submit() {
     if (busy) return;
@@ -34,9 +36,10 @@ export function AuthScreen({
     if (email.trim() === "" || password === "") return setError("이메일과 비밀번호를 입력해주세요");
     if (mode === "signup" && password.length < 8) return setError("비밀번호는 8자 이상으로 정해주세요");
     if (mode === "signup" && (nickname.trim().length < 2 || nickname.trim().length > 12)) return setError("닉네임은 2~12자로 정해주세요");
+    if (mode === "signup" && (realName.trim().length < 2 || realName.trim().length > 30)) return setError("실명은 2~30자로 입력해주세요");
     setBusy(true);
     try {
-      const user = mode === "login" ? await login(email.trim(), password) : await signup(email.trim(), password, nickname.trim());
+      const user = mode === "login" ? await login(email.trim(), password) : await signup(email.trim(), password, nickname.trim(), realName.trim());
       onDone(user);
     } catch (e) {
       setError(e instanceof Error ? e.message : "다시 시도해주세요");
@@ -92,12 +95,21 @@ export function AuthScreen({
             </label>
           </div>
           {mode === "signup" && (
-            <div className="ps-field">
-              <label className="ps-label" htmlFor={nicknameId}>닉네임</label>
-              <label className="search-bar ps-input-bar" htmlFor={nicknameId}>
-                <input id={nicknameId} className="ps-input" maxLength={12} placeholder="채팅에서 상대에게 보이는 이름이에요" value={nickname} onChange={(e) => setNickname(e.target.value)} />
-              </label>
-            </div>
+            <>
+              <div className="ps-field">
+                <label className="ps-label" htmlFor={realNameId}>실명</label>
+                <label className="search-bar ps-input-bar" htmlFor={realNameId}>
+                  <input id={realNameId} className="ps-input" autoComplete="name" maxLength={30} placeholder="계약서에 적힌 이름을 입력해주세요" value={realName} onChange={(e) => setRealName(e.target.value)} />
+                </label>
+                <p className="ps-hint">다른 사람에게는 가운데 글자를 가려서 보여드려요.</p>
+              </div>
+              <div className="ps-field">
+                <label className="ps-label" htmlFor={nicknameId}>닉네임</label>
+                <label className="search-bar ps-input-bar" htmlFor={nicknameId}>
+                  <input id={nicknameId} className="ps-input" maxLength={12} placeholder="채팅에서 상대에게 보이는 이름이에요" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+                </label>
+              </div>
+            </>
           )}
           {error && <p className="ps-hint ps-error au-error" role="alert">{error}</p>}
           <button className="upload-button au-submit" type="submit" disabled={busy}>

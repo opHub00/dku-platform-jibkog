@@ -9,6 +9,7 @@ import type {
   Seller,
   TrustReport,
 } from "../types";
+import type { AiResult, ContractExtraction, DescriptionScreening } from "../ai/types";
 import { currentSeller } from "../data/currentSeller";
 import { createHttpPresaleRepository } from "./httpPresaleRepository";
 
@@ -28,7 +29,7 @@ export interface PresaleRepository {
   /** trust 점수가 REVIEW_THRESHOLD_SCORE 미만이면 status "review"로 저장한다 */
   createListing(
     input: NewPresaleListingInput,
-    options?: { trust?: TrustReport },
+    options?: { trust?: TrustReport; verification?: { contract: AiResult<ContractExtraction>; screening: AiResult<DescriptionScreening> } },
   ): Promise<PresaleListing>;
   /** 지금 로그인한 판매자(더미) */
   getCurrentSeller(): Promise<Seller>;

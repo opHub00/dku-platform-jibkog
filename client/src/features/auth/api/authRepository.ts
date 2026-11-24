@@ -5,7 +5,8 @@ import { apiRequest, AuthRequiredError, field } from "./httpClient";
 export interface AuthRepository {
   /** 로그인 안 했으면 null */
   me(): Promise<AuthUser | null>;
-  signup(input: { email: string; password: string; nickname: string }): Promise<AuthUser>;
+  signup(input: { email: string; password: string; nickname: string; realName: string }): Promise<AuthUser>;
+  verifyIdentity(code: string): Promise<AuthUser>;
   login(input: { email: string; password: string }): Promise<AuthUser>;
   logout(): Promise<void>;
 }
@@ -35,6 +36,9 @@ export function createHttpAuthRepository(): AuthRepository {
     },
     async signup(input) {
       return parseUser(await apiRequest("/api/auth/signup", { method: "POST", body: input }));
+    },
+    async verifyIdentity(code) {
+      return parseUser(await apiRequest("/api/auth/verify-identity", { method: "POST", body: { code } }));
     },
     async login(input) {
       return parseUser(await apiRequest("/api/auth/login", { method: "POST", body: input }));

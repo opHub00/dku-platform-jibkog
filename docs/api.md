@@ -39,18 +39,21 @@
 
 | 메서드·주소 | 로그인 | 요청 | 응답 |
 |---|---|---|---|
-| `POST /api/auth/signup` | - | `{ email, password, nickname }` | 201 `{ user: AuthUser }` + 세션 쿠키 |
+| `POST /api/auth/signup` | - | `{ email, password, nickname, realName }` | 201 `{ user: AuthUser }` + 세션 쿠키 |
 | `POST /api/auth/login` | - | `{ email, password }` | 200 `{ user: AuthUser }` + 세션 쿠키 |
 | `POST /api/auth/logout` | - | `{}` | 204, 쿠키 삭제 |
 | `GET /api/auth/me` | 필요 | - | 200 `{ user: AuthUser }` / 401 |
+| `POST /api/auth/verify-identity` | 필요 | `{ code: "123456" }` | 200 `{ user: AuthUser }` (`identityVerified: true`) / 400 / 401 |
 
 - 이메일: 소문자로 저장, 중복이면 409.
 - 비밀번호: 8~128자. `scrypt`(N=16384, r=8, p=1, 솔트 16바이트)로 해시해 `scrypt$N$r$p$솔트$해시` 형식으로 저장합니다.
 - 닉네임: 2~12자. 채팅 상대에게 보이는 이름입니다.
+- 실명(`realName`): 2~30자. 서버 `users.real_name`에 저장하며 본인 계정 응답과 본인 매물에는 원문, 다른 사람의 매물에는 가운데를 가린 이름으로 표시합니다.
+- 본인 인증은 **시연용 데모 인증**입니다. 실제 문자를 보내지 않으며 숫자 6자리면 무엇이든 통과합니다. 서버가 로그인한 사용자만 `identity_verified`를 `true`로 바꿉니다.
 
 ```json
 // AuthUser
-{ "id": 6, "email": "me@example.com", "nickname": "집콕회원", "realName": null, "identityVerified": false }
+{ "id": 6, "email": "me@example.com", "nickname": "집콕회원", "realName": "김서연", "identityVerified": false }
 ```
 
 **개발용 시드 계정**(처음 실행할 때 자동 생성, 시드 매물의 판매자): `seller1@jibkog.dev` ~ `seller5@jibkog.dev`, 비밀번호 `jibkog-demo-1234`. 배포 전에 지워야 합니다.
@@ -73,12 +76,16 @@
   "salePrice": 1500000000, "premium": 150000000, "optionCost": 10000000, "paidAmount": 450000000,
   "description": "남향 12층이에요. 발코니 확장했어요.",
   "documents": [{ "type": "salesContract", "status": "pending" }],
-  "trust": { "...": "TrustReport(선택)" }
+  "verification": {
+    "contract": { "mode": "demo", "result": { "complexName": "단지명", "exclusiveArea": 84, "salePrice": 1500000000, "contractorName": "김서연", "contractDate": null, "confidence": 0.55, "forgeryNotes": [] } },
+    "screening": { "mode": "demo", "result": { "findings": [] } }
+  }
 }
 ```
 - 전매제한 기간 중인 단지면 409입니다.
 - `paidAmount`는 `salePrice + optionCost` 이하여야 합니다.
-- `trust.score`가 50 미만이면 `status: "review"`(검토 대기)로 저장되어 공개 목록에서 빠집니다.
+- 서버가 `verification`의 계약서 인식·설명 검사 결과와 저장된 판매자 실명·인증 여부를 사용해 신뢰 점수를 계산합니다. 요청의 `seller`나 `trust` 값은 신원·점수 판단에 쓰지 않습니다.
+- 서버 계산 점수가 50 미만이면 `status: "review"`(검토 대기)로 저장되어 공개 목록에서 빠집니다.
 - 제목은 서버가 `"<단지명> <면적>㎡"`로 만듭니다.
 - `PATCH`의 `status`는 `selling` / `reserved` / `sold`만 가능하고, 검토 대기 매물은 바꿀 수 없습니다.
 
@@ -90,7 +97,7 @@
 - `trust`: 가장 최근 신뢰 리포트입니다.
 - `documents`: 항상 3종이고, 없으면 `missing`입니다.
 
-> 신뢰 리포트는 지금 브라우저가 계산해서 보냅니다(AI 검증 결과 포함). 서버는 형식과 점수 범위만 검사합니다. 실서비스에서는 서버가 다시 계산하거나 검증해야 합니다.
+> 계약서 인식·설명 검사 결과는 지금 브라우저가 보냅니다. 서버는 점수를 다시 계산하지만 인식 결과의 출처까지 검증하지는 않습니다. 실서비스에서는 AI 검증도 서버에서 실행해야 합니다.
 
 ## 거래 채팅 `/api/chats`
 

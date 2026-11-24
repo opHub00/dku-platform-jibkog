@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
+  ShieldCheck,
   Sparkles,
   UserRound,
   WalletCards,
@@ -36,6 +37,7 @@ import { chatRepository } from "@/features/chat/api/chatRepository";
 import { toChatThread } from "@/features/chat/lib/adapters";
 import { avatarText, ROLE_LABELS } from "@/features/chat/lib/names";
 import { AuthScreen } from "@/features/auth/components/AuthScreen";
+import { IdentityVerificationScreen } from "@/features/auth/components/IdentityVerificationScreen";
 import { logout, useAuth } from "@/features/auth/lib/session";
 import { useAiSessions, useChatRooms } from "@/features/chat/lib/useChat";
 import "@/features/chat/chat.css";
@@ -136,17 +138,18 @@ function FavoritesView({ listings: favoriteListings, onOpenListing, onToggleLike
   return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 공간</p><h1>관심</h1></div><button className="icon-button"><MoreHorizontal size={20} /></button></header><main className="favorites-main"><div className="segment-control"><button className={segment === "saved" ? "active" : ""} onClick={() => setSegment("saved")}>찜한 매물 <span>{savedListings.length}</span></button><button className={segment === "posted" ? "active" : ""} onClick={() => setSegment("posted")}>내가 등록한 매물 <span>{postedListings.length}</span></button></div>{segment === "saved" ? <div className="favorite-stack">{savedListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => onToggleLike(listing)} />)}</div> : <div className="posted-view"><div className="posted-summary"><div><span className="eyebrow">판매 중인 매물</span><strong>{postedListings.length}건</strong><p>관심 있는 구매자와 대화를 시작해보세요.</p></div><div className="posted-chart"><span /><span /><span /><span /><span /></div></div>{postedListing && <div className="posted-card" onClick={() => onOpenListing(postedListing)}><div className="posted-card-image"><img src={postedListing.image} alt="" /><StatusPill tone="green">{postedListing.presale?.status === "review" ? "검토중" : "거래중"}</StatusPill></div><div><div className="listing-meta"><span>{postedListing.location}</span><span>조회 24</span></div><h3>{postedListing.title}</h3><strong className="listing-price">{postedListing.price}</strong><div className="posted-actions"><button onClick={(event) => { event.stopPropagation(); toast("등록 매물을 수정할 수 있어요"); }}>수정</button><button onClick={(event) => { event.stopPropagation(); toast("매물 통계를 확인했어요"); }}>통계 보기</button><button onClick={(event) => { event.stopPropagation(); onOpenInquiries(postedListing); }}>문의 {(chatRooms ?? []).filter((room) => room.listingId === postedListing.id && room.myRole === "seller").length}건</button></div></div></div>}</div>}<button className="add-listing-button" onClick={onOpenRegister}><Plus size={18} /><span>{segment === "posted" ? "새 매물 등록하기" : "내 매물 등록하기"}</span><ChevronRight size={16} /></button></main></div>;
 }
 
-function MyView({ onOpenProfile, onLogin }: { onOpenProfile: () => void; onLogin: () => void }) {
+function MyView({ onOpenProfile, onLogin, onVerifyIdentity }: { onOpenProfile: () => void; onLogin: () => void; onVerifyIdentity: () => void }) {
   const { user } = useAuth();
   const profile = useProfile();
   const likedPresaleCount = useLikedPresaleCount();
   const menuItems = [
     { icon: <UserRound size={18} />, label: "프로필 · 관심지역 설정", detail: profileSummary(profile) },
+    { icon: <ShieldCheck size={18} />, label: user?.identityVerified ? "본인 인증 완료" : "본인 인증하기", detail: user?.identityVerified ? "인증된 계정이에요" : "시연용 데모 인증", action: user && !user.identityVerified ? onVerifyIdentity : user ? () => toast("이미 본인 인증을 마쳤어요") : onLogin },
     { icon: <Bell size={18} />, label: "알림 구독 관리", detail: "청약 3개 · 거래 2개" },
     { icon: <FileCheck2 size={18} />, label: "계약서류 점검 이력", detail: "최근 점검 2건" },
     { icon: <WalletCards size={18} />, label: "멤버십 관리", detail: "집콕 프리미엄 이용 중" },
   ];
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 정보</p><h1>MY</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header><main className="my-main"><div className="profile-card"><div className="profile-top"><div className="profile-avatar">{shortName(profile.name)}</div><div><h2>{profile.name}님</h2><p>가입일 2026. 04. 18</p></div><button onClick={() => toast("프로필 편집을 준비 중이에요")}><MoreHorizontal size={19} /></button></div><div className="profile-divider" /><div className="profile-stats"><div><span>청약 가점</span><strong>62점</strong></div><div><span>관심지역</span><strong>{profile.interestRegions.length}곳</strong></div><div><span>찜한 매물</span><strong>{likedPresaleCount}건</strong></div></div></div><div className="my-section"><SectionHeader eyebrow="관리" title="내 설정" /><div className="my-menu">{menuItems.map((item) => <button key={item.label} className="my-menu-row" onClick={() => item.label === "프로필 · 관심지역 설정" ? onOpenProfile() : toast(`${item.label} 화면을 준비 중이에요`)}><div className="my-menu-icon">{item.icon}</div><div><strong>{item.label}</strong><span>{item.detail}</span></div><ChevronRight size={16} /></button>)}</div></div><div className="membership-card"><div className="membership-icon"><Sparkles size={18} /></div><div><span className="eyebrow">집콕 프리미엄</span><strong>계약서류 AI 점검을 무제한으로</strong><p>다음 결제일 2026. 12. 18</p></div><button onClick={() => toast("멤버십 관리 화면을 준비 중이에요")}><ChevronRight size={16} /></button></div><div className="my-footer"><span>버전 1.0.0</span><button>이용약관</button><button>개인정보처리방침</button>{user ? <button onClick={() => void logout().then(() => toast("로그아웃했어요"))}>로그아웃</button> : <button onClick={onLogin}>로그인</button>}</div></main></div>;
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 정보</p><h1>MY</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header><main className="my-main"><div className="profile-card"><div className="profile-top"><div className="profile-avatar">{shortName(profile.name)}</div><div><h2>{profile.name}님</h2><p>가입일 2026. 04. 18</p></div><button onClick={() => toast("프로필 편집을 준비 중이에요")}><MoreHorizontal size={19} /></button></div><div className="profile-divider" /><div className="profile-stats"><div><span>청약 가점</span><strong>62점</strong></div><div><span>관심지역</span><strong>{profile.interestRegions.length}곳</strong></div><div><span>찜한 매물</span><strong>{likedPresaleCount}건</strong></div></div></div><div className="my-section"><SectionHeader eyebrow="관리" title="내 설정" /><div className="my-menu">{menuItems.map((item) => <button key={item.label} className="my-menu-row" onClick={item.action ?? (item.label === "프로필 · 관심지역 설정" ? onOpenProfile : () => toast(`${item.label} 화면을 준비 중이에요`))}><div className="my-menu-icon">{item.icon}</div><div><strong>{item.label}</strong><span>{item.detail}</span></div><ChevronRight size={16} /></button>)}</div></div><div className="membership-card"><div className="membership-icon"><Sparkles size={18} /></div><div><span className="eyebrow">집콕 프리미엄</span><strong>계약서류 AI 점검을 무제한으로</strong><p>다음 결제일 2026. 12. 18</p></div><button onClick={() => toast("멤버십 관리 화면을 준비 중이에요")}><ChevronRight size={16} /></button></div><div className="my-footer"><span>버전 1.0.0</span><button>이용약관</button><button>개인정보처리방침</button>{user ? <button onClick={() => void logout().then(() => toast("로그아웃했어요"))}>로그아웃</button> : <button onClick={onLogin}>로그인</button>}</div></main></div>;
 }
 
 export default function Home() {
@@ -157,6 +160,7 @@ export default function Home() {
   const [showAiSessions, setShowAiSessions] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showIdentityVerification, setShowIdentityVerification] = useState(false);
   const [chatRoomId, setChatRoomId] = useState<number | null>(null);
   const [authPrompt, setAuthPrompt] = useState<{ reason: string; then?: () => void } | null>(null);
   const { user } = useAuth();
@@ -320,6 +324,10 @@ export default function Home() {
     );
   }
 
+  if (showIdentityVerification) {
+    return <div className="app-frame"><IdentityVerificationScreen onClose={() => setShowIdentityVerification(false)} onDone={() => { setShowIdentityVerification(false); toast.success("본인 인증을 마쳤어요"); }} /></div>;
+  }
+
   if (showRegister) {
     return (
       <div className="app-frame">
@@ -371,6 +379,6 @@ export default function Home() {
   }
 
   const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={changeTab} /></div>;
 }

@@ -3,6 +3,8 @@ import type { ChatRole, TradeChatMessage as ChatMessage, TradeChatRoom as ChatRo
 import { isResaleRestricted } from "../../client/src/features/presale/lib/resale";
 import { formatWon } from "../../client/src/features/presale/lib/format";
 import type { Complex, PresaleDocument, PresaleListing, Sido, TrustReport } from "../../client/src/features/presale/types";
+import { evaluateTrust } from "../../client/src/features/presale/ai/trustEngine";
+import { parseAiModelInfo, parseContractExtraction, parseDescriptionScreening, type AiResult, type ContractExtraction, type DescriptionScreening } from "../../client/src/features/presale/ai/types";
 import { hashPassword, hashToken, newSessionToken, SESSION_DAYS, verifyPassword } from "../auth";
 import type {
   ComplexAreaRow,
@@ -121,7 +123,14 @@ function toPresaleListing(row: ListingRow, ctx: ListingContext): PresaleListing 
     status: row.status,
     liked: ctx.likedIds.has(row.id),
     createdAt: row.created_at,
-    ...(report && isTrustReport(report.report_json) ? { trust: report.report_json } : {}),
+    ...(report && isTrustReport(report.report_json) ? {
+      trust: isMine ? report.report_json : {
+        ...report.report_json,
+        items: report.report_json.items.map((item) => isRecord(item) && item.key === "contractName"
+          ? { ...item, description: item.status === "pass" ? "계약자명이 판매자 실명과 일치해요" : "계약자명 대조 결과를 확인해주세요" }
+          : item),
+      },
+    } : {}),
     isMine,
   };
 }
@@ -210,13 +219,14 @@ export async function signup(store: Store, input: unknown): Promise<{ user: Auth
   const email = stringField(body, "email", { max: 254 }).toLowerCase();
   const password = typeof body.password === "string" ? body.password : "";
   const nickname = stringField(body, "nickname", { min: 2, max: 12 });
+  const realName = stringField(body, "realName", { min: 2, max: 30 });
   if (!EMAIL_PATTERN.test(email)) throw badRequest("이메일 형식이 올바르지 않아요");
   if (password.length < 8 || password.length > 128) throw badRequest("비밀번호는 8~128자로 정해주세요");
   const passwordHash = await hashPassword(password); // 느린 계산은 잠금 밖에서
   return store.write(async (tx) => {
     if (await tx.findUserByEmail(email)) throw conflict("이미 가입한 이메일이에요");
     const now = new Date().toISOString();
-    const user = await tx.insertUser({ nickname, real_name: null, identity_verified: false, membership: "free", email, password_hash: passwordHash, created_at: now });
+    const user = await tx.insertUser({ nickname, real_name: realName, identity_verified: false, membership: "free", email, password_hash: passwordHash, created_at: now });
     const token = await createSession(tx, user.id);
     return { user: toAuthUser(user), token };
   });
@@ -251,6 +261,26 @@ export async function login(store: Store, input: unknown): Promise<{ user: AuthU
 export async function logout(store: Store, token: string | undefined): Promise<void> {
   if (!token) return;
   await store.write((tx) => tx.deleteSession(hashToken(token)));
+}
+
+/** 시연용 데모: 실제 SMS 발송 없이 6자리 입력만 검사한다. */
+export async function verifyIdentity(store: Store, userId: number, input: unknown): Promise<AuthUser> {
+  const body = requireRecord(input);
+  if (typeof body.code !== "string" || !/^\d{6}$/.test(body.code)) throw badRequest("인증번호 6자리를 입력해주세요");
+  const user = await store.write(async (tx) => {
+    const current = await tx.findUserById(userId);
+    if (!current) throw unauthorized();
+    return tx.updateUser(userId, { identity_verified: true });
+  });
+  return toAuthUser(user);
+}
+
+function aiResult<T>(value: unknown, parse: (value: unknown) => T | null): AiResult<T> | null {
+  if (!isRecord(value) || (value.mode !== "live" && value.mode !== "demo")) return null;
+  const result = parse(value.result);
+  if (!result) return null;
+  const analyzedBy = parseAiModelInfo(value.analyzedBy);
+  return { mode: value.mode, result, ...(analyzedBy ? { analyzedBy } : {}) };
 }
 
 /** 세션 쿠키로 사용자를 찾는다. 없거나 만료면 null */
@@ -308,16 +338,35 @@ export async function createListing(store: Store, sellerId: number, input: unkno
     }
     docs.push({ kind: doc.type as TradeDocumentKind, status: doc.status as (typeof DOCUMENT_STATUSES)[number] });
   }
-  const trust = body.trust === undefined ? null : body.trust;
-  if (trust !== null && !isTrustReport(trust)) throw badRequest("trust 형식이 올바르지 않아요");
-  if (trust && (trust.score < 0 || trust.score > 100)) throw badRequest("trust.score는 0~100이어야 해요");
+  const verification = requireRecord(body.verification);
+  const contract = aiResult<ContractExtraction>(verification.contract, parseContractExtraction);
+  const screening = aiResult<DescriptionScreening>(verification.screening, parseDescriptionScreening);
+  if (!contract || !screening) throw badRequest("verification 형식이 올바르지 않아요");
 
   const created = await store.write(async (tx) => {
     const complexRow = await tx.findComplex(complexId);
     if (!complexRow) throw badRequest("단지 정보를 찾을 수 없어요");
-    const complex = toComplex(complexRow, (await tx.listDistricts()).find((d) => d.id === complexRow.district_id), await tx.listComplexAreas());
-    if (complex && isResaleRestricted(complex)) throw conflict("전매제한 기간이라 아직 등록할 수 없어요");
+    const [districts, areas, complexRows, listingRows] = await Promise.all([tx.listDistricts(), tx.listComplexAreas(), tx.listComplexes(), tx.listTradeListings()]);
+    const complex = toComplex(complexRow, districts.find((d) => d.id === complexRow.district_id), areas);
+    if (!complex) throw badRequest("단지 정보가 올바르지 않아요");
+    if (isResaleRestricted(complex)) throw conflict("전매제한 기간이라 아직 등록할 수 없어요");
+    const seller = await tx.findUserById(sellerId);
+    if (!seller) throw unauthorized();
+    const allComplexes = complexRows.map((item) => toComplex(item, districts.find((d) => d.id === item.district_id), areas)).filter((item): item is Complex => item !== null);
+    const allListings = listingRows.map((item) => ({
+      id: item.id, complexId: item.complex_id, status: item.status, salePrice: item.sale_price, premium: item.premium,
+    })) as PresaleListing[];
     const now = new Date().toISOString();
+    const listing: PresaleListing = {
+      id: 0, complexId, seller: {
+        id: seller.id, nickname: seller.nickname, realName: seller.real_name ?? "", identityVerified: seller.identity_verified,
+        tradeCount: await tx.countCompletedTradesBySeller(seller.id),
+      },
+      area, floor, salePrice, premium, optionCost, paidAmount, description,
+      documents: DOCUMENT_KINDS.map((kind) => ({ type: kind, status: docs.find((doc) => doc.kind === kind)?.status ?? "missing" })),
+      status: "selling", liked: false, createdAt: now,
+    };
+    const trust = evaluateTrust({ listing, complex, allListings, allComplexes, contract, screening });
     const row = await tx.insertListing({
       type: "trade",
       complex_id: complexId,
@@ -327,7 +376,7 @@ export async function createListing(store: Store, sellerId: number, input: unkno
       urgent: false,
       seller_id: sellerId,
       // 신뢰 점수가 기준 미만이면 검토 대기로 두고 공개 목록에 노출하지 않는다
-      status: trust && trust.score < REVIEW_THRESHOLD_SCORE ? "review" : "selling",
+      status: trust.score < REVIEW_THRESHOLD_SCORE ? "review" : "selling",
       area_m2: area,
       floor,
       sale_price: salePrice,
@@ -336,7 +385,7 @@ export async function createListing(store: Store, sellerId: number, input: unkno
       paid_amount: paidAmount,
     });
     for (const doc of docs) await tx.upsertTradeDocument({ listing_id: row.id, kind: doc.kind, status: doc.status, storage_key: null });
-    if (trust) await tx.insertTrustReport({ listing_id: row.id, evaluated_at: trust.evaluatedAt, score: trust.score, mode: trust.mode, report_json: trust });
+    await tx.insertTrustReport({ listing_id: row.id, evaluated_at: trust.evaluatedAt, score: trust.score, mode: trust.mode, report_json: trust });
     return row;
   });
   return getListing(store, sellerId, created.id);

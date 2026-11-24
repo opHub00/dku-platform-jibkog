@@ -88,6 +88,11 @@ function createTx(data: FileData): StoreTx {
     },
     async findUserById(id) { return copy(t.users.find((u) => u.id === id) ?? null); },
     async findUserByEmail(email) { return copy(t.users.find((u) => u.email === email) ?? null); },
+    async updateUser(id, patch) {
+      const user = mustFind(t.users, (u) => u.id === id, "사용자");
+      Object.assign(user, copy(patch));
+      return copy(user);
+    },
 
     async insertSession(row) { t.sessions.push(copy(row)); },
     async findSession(tokenHash) { return copy(t.sessions.find((s) => s.token_hash === tokenHash) ?? null); },

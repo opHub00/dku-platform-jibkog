@@ -44,8 +44,14 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return user;
 }
 
-export async function signup(email: string, password: string, nickname: string): Promise<AuthUser> {
-  const user = await authRepository.signup({ email, password, nickname });
+export async function signup(email: string, password: string, nickname: string, realName: string): Promise<AuthUser> {
+  const user = await authRepository.signup({ email, password, nickname, realName });
+  setState({ user, loaded: true });
+  return user;
+}
+
+export async function verifyIdentity(code: string): Promise<AuthUser> {
+  const user = await authRepository.verifyIdentity(code);
   setState({ user, loaded: true });
   return user;
 }

@@ -63,6 +63,10 @@ export function createAppApi(options: { dataFile: string; log?: (message: string
   route("GET", "/api/auth/me", async ({ res, user }) => {
     sendJson(res, 200, { user: svc.toAuthUser(svc.requireUser(user)) });
   });
+  route("POST", "/api/auth/verify-identity", async ({ req, res, user }) => {
+    const me = svc.requireUser(user);
+    sendJson(res, 200, { user: await svc.verifyIdentity(store, me.id, await readJson(req)) });
+  });
 
   // ---------- 단지·매물 ----------
   route("GET", "/api/complexes", async ({ res }) => sendJson(res, 200, { complexes: await svc.listComplexes(store) }));
