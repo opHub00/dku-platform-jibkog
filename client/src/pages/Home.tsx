@@ -31,6 +31,7 @@ import { RegisterListingFlow } from "@/features/presale/components/RegisterListi
 import type { PresaleListing } from "@/features/presale/types";
 import { useLikedPresaleCount } from "@/features/presale/lib/useLikedPresaleCount";
 import { ProfileForm } from "@/features/profile/components/ProfileForm";
+import { OnboardingScreen } from "@/features/profile/components/OnboardingScreen";
 import { useProfile } from "@/features/profile/lib/useProfile";
 import { greetingName, interestHeadline, profileSummary, regionKey, shortName } from "@/features/profile/lib/profileText";
 import { chatRepository } from "@/features/chat/api/chatRepository";
@@ -163,6 +164,7 @@ export default function Home() {
   const [showIdentityVerification, setShowIdentityVerification] = useState(false);
   const [chatRoomId, setChatRoomId] = useState<number | null>(null);
   const [authPrompt, setAuthPrompt] = useState<{ reason: string; then?: () => void } | null>(null);
+  const [onboardingAfterAuth, setOnboardingAfterAuth] = useState<{ name?: string; then?: () => void } | null>(null);
   const { user } = useAuth();
   const [chatFilter, setChatFilter] = useState<{ id: number; title: string } | null>(null);
   const noticeListings = listings.filter((listing) => listing.type === "notice");
@@ -298,10 +300,30 @@ export default function Home() {
         <AuthScreen
           reason={authPrompt.reason}
           onClose={() => setAuthPrompt(null)}
-          onDone={(loggedIn) => {
+          onDone={(loggedIn, mode) => {
             const next = authPrompt.then;
             setAuthPrompt(null);
+            if (mode === "signup") {
+              setOnboardingAfterAuth({ name: loggedIn.realName ?? loggedIn.nickname, then: next });
+              return;
+            }
             toast(`${loggedIn.nickname}님, 반가워요`);
+            next?.();
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (onboardingAfterAuth) {
+    return (
+      <div className="app-frame">
+        <OnboardingScreen
+          initialName={onboardingAfterAuth.name}
+          onComplete={(saved) => {
+            const next = onboardingAfterAuth.then;
+            setOnboardingAfterAuth(null);
+            toast(saved ? "환영해요! 맞춤 정보를 준비했어요" : "언제든 MY에서 프로필을 완성할 수 있어요");
             next?.();
           }}
         />
