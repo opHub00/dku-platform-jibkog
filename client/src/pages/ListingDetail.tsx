@@ -131,11 +131,10 @@ export function ListingDetail({ listing, liked, isMine = false, onBack, onToggle
       </main>
 
       <div className={`detail-actions ${isTrade ? "trade-actions" : ""}`}>
-        <button className="action-secondary" onClick={onToggleLike}><Heart size={18} fill={liked ? "currentColor" : "none"} /><span>{liked ? "찜한 매물" : "찜하기"}</span></button>
         {isTrade && !isMine && <button className="action-offer" onClick={() => setShowOffer(true)}><Tag size={17} /><span>가격 제안</span></button>}
         {isTrade && <button className="action-primary" onClick={isMine ? onOpenInquiries : onGoChat}><MessageCircle size={18} /><span>{isMine ? `문의 ${inquiryCount}건` : "판매자와 채팅"}</span></button>}
-        <button className="action-ai" onClick={() => setShowAi(true)}><Bot size={18} /><span>{isTrade ? "이 매물 분석하기" : "AI한테 물어보기"}</span></button>
-        <button className="action-doc" onClick={() => setShowDoc(true)}><FileCheck2 size={18} /><span>계약서류 AI 점검</span></button>
+        {!isTrade && <button className="action-ai" onClick={() => setShowAi(true)}><Bot size={18} /><span>AI한테 물어보기</span></button>}
+        {!isTrade && <button className="action-doc" onClick={() => setShowDoc(true)}><FileCheck2 size={18} /><span>계약서류 AI 점검</span></button>}
         {isTrade && match && <button className="action-match" onClick={() => setShowMatch(true)}><Handshake size={18} /><span>조건 맞춰보기</span></button>}
       </div>
 
