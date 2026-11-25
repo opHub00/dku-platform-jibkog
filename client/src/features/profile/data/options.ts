@@ -1,4 +1,4 @@
-import type { AreaPreference, IncomeBracket, SubscriptionPeriod, UserProfile } from "../types";
+import type { AreaPreference, HomeType, IncomeBracket, MoveInTiming, SubscriptionPeriod, UserProfile } from "../types";
 
 /** 저장 전 기본값. 지금 화면에 하드코딩된 값(주예나, 서울 서초구, 무주택 3년)과 같다. */
 export const DEFAULT_PROFILE: UserProfile = {
@@ -8,8 +8,11 @@ export const DEFAULT_PROFILE: UserProfile = {
   homelessYears: 3,
   incomeBracket: null,
   subscriptionPeriod: null,
+  dependents: null,
   interestRegions: [{ sido: "서울", sigungu: "서초구" }],
   interestAreas: [],
+  homeType: null,
+  moveInTiming: null,
   budgetMin: null,
   budgetMax: null,
   savedAt: null,
@@ -42,6 +45,25 @@ export const AREA_OPTIONS: { value: AreaPreference; label: string }[] = [
   { value: "upTo59", label: "59㎡ 이하" },
   { value: "60to84", label: "60~84㎡" },
   { value: "over85", label: "85㎡ 이상" },
+];
+
+export const DEPENDENTS_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: "0명" },
+  { value: 1, label: "1명" },
+  { value: 2, label: "2명" },
+  { value: 3, label: "3명 이상" },
+];
+
+export const HOME_TYPE_OPTIONS: { value: HomeType; label: string }[] = [
+  { value: "apartment", label: "아파트" },
+  { value: "officetel", label: "오피스텔" },
+  { value: "townhouse", label: "타운하우스" },
+];
+
+export const MOVE_IN_OPTIONS: { value: MoveInTiming; label: string }[] = [
+  { value: "within1y", label: "1년 이내" },
+  { value: "1to3y", label: "1~3년" },
+  { value: "any", label: "상관없음" },
 ];
 
 export const NAME_MAX_LENGTH = 10;

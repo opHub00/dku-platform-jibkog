@@ -3,9 +3,9 @@ import { ArrowLeft, Check, CheckCircle2, ChevronRight, MapPin, Pencil } from "lu
 import { toast } from "sonner";
 import { presaleRepository } from "@/features/presale/api/presaleRepository";
 import { profileRepository } from "../api/profileRepository";
-import { AREA_OPTIONS, DEFAULT_PROFILE, INCOME_OPTIONS, NAME_MAX_LENGTH, SIDO_OPTIONS, SIGUNGU_MAX_LENGTH, SUBSCRIPTION_OPTIONS } from "../data/options";
+import { AREA_OPTIONS, DEFAULT_PROFILE, DEPENDENTS_OPTIONS, HOME_TYPE_OPTIONS, INCOME_OPTIONS, MOVE_IN_OPTIONS, NAME_MAX_LENGTH, SIDO_OPTIONS, SIGUNGU_MAX_LENGTH, SUBSCRIPTION_OPTIONS } from "../data/options";
 import { regionKey } from "../lib/profileText";
-import type { AreaPreference, IncomeBracket, Region, SubscriptionPeriod } from "../types";
+import type { AreaPreference, HomeType, IncomeBracket, MoveInTiming, Region, SubscriptionPeriod } from "../types";
 import "@/features/presale/presale.css";
 import "../onboarding.css";
 
@@ -33,9 +33,12 @@ export function OnboardingScreen({ initialName, onComplete }: { initialName?: st
   const [homelessLabel, setHomelessLabel] = useState<string | null>(null);
   const [incomeBracket, setIncomeBracket] = useState<IncomeBracket | null>(null);
   const [subscriptionPeriod, setSubscriptionPeriod] = useState<SubscriptionPeriod | null>(null);
+  const [dependents, setDependents] = useState<number | null>(null);
   const [regionOptions, setRegionOptions] = useState<Region[]>([]);
   const [interestRegions, setInterestRegions] = useState<Region[]>([]);
   const [interestAreas, setInterestAreas] = useState<AreaPreference[]>([]);
+  const [homeType, setHomeType] = useState<HomeType | null>(null);
+  const [moveInTiming, setMoveInTiming] = useState<MoveInTiming | null>(null);
   const [budgetMin, setBudgetMin] = useState("");
   const [budgetMax, setBudgetMax] = useState("");
   const [saving, setSaving] = useState(false);
@@ -97,8 +100,11 @@ export function OnboardingScreen({ initialName, onComplete }: { initialName?: st
         homelessYears,
         incomeBracket,
         subscriptionPeriod,
+        dependents,
         interestRegions: interestRegions.length > 0 ? interestRegions : [residence],
         interestAreas,
+        homeType,
+        moveInTiming,
         budgetMin: budgetMin === "" ? null : Number(budgetMin) * 10_000,
         budgetMax: budgetMax === "" ? null : Number(budgetMax) * 10_000,
       });
@@ -114,6 +120,9 @@ export function OnboardingScreen({ initialName, onComplete }: { initialName?: st
     const subscriptionLabel = SUBSCRIPTION_OPTIONS.find((option) => option.value === subscriptionPeriod)?.label ?? "미입력";
     const areaLabel = interestAreas.length > 0 ? interestAreas.map((area) => AREA_OPTIONS.find((option) => option.value === area)?.label).join(", ") : "미입력";
     const budgetLabel = budgetMin || budgetMax ? `${budgetMin ? `${budgetMin}만원` : "0원"} ~ ${budgetMax ? `${budgetMax}만원` : "무제한"}` : "미입력";
+    const homeTypeLabel = HOME_TYPE_OPTIONS.find((option) => option.value === homeType)?.label ?? "미입력";
+    const moveInLabel = MOVE_IN_OPTIONS.find((option) => option.value === moveInTiming)?.label ?? "미입력";
+    const dependentsLabel = DEPENDENTS_OPTIONS.find((option) => option.value === dependents)?.label ?? "미입력";
     return (
       <div className="onboarding-screen">
         <div className="onboarding-inner summary-inner">
@@ -146,11 +155,15 @@ export function OnboardingScreen({ initialName, onComplete }: { initialName?: st
             </div>
             <div className="summary-row">
               <span>청약 조건</span>
-              <strong>소득 {incomeLabel} · 청약통장 {subscriptionLabel}</strong>
+              <strong>소득 {incomeLabel} · 청약통장 {subscriptionLabel} · 부양가족 {dependentsLabel}</strong>
             </div>
             <div className="summary-row">
               <span>찾는 집</span>
-              <strong>{areaLabel} · {budgetLabel}</strong>
+              <strong>{homeTypeLabel} · {areaLabel} · {budgetLabel}</strong>
+            </div>
+            <div className="summary-row">
+              <span>입주 희망 시기</span>
+              <strong>{moveInLabel}</strong>
             </div>
           </div>
           <button className="auth-primary summary-button" onClick={() => void finish()} disabled={saving}>
@@ -215,8 +228,8 @@ export function OnboardingScreen({ initialName, onComplete }: { initialName?: st
 
           {screen === "qualify" && (
             <div className="question-block">
-              <span className="question-count">{qualifyStep + 1} / 3</span>
-              <h2>{qualifyStep === 0 ? "무주택 기간이 어떻게 되나요?" : qualifyStep === 1 ? "연소득 구간이 어떻게 되나요?" : "청약통장 가입기간은 어떻게 되나요?"}</h2>
+              <span className="question-count">{qualifyStep + 1} / 4</span>
+              <h2>{qualifyStep === 0 ? "무주택 기간이 어떻게 되나요?" : qualifyStep === 1 ? "연소득 구간이 어떻게 되나요?" : qualifyStep === 2 ? "청약통장 가입기간은 어떻게 되나요?" : "부양가족은 몇 명인가요?"}</h2>
               <div className="choice-grid">
                 {qualifyStep === 0 &&
                   HOMELESS_CHOICES.map((choice) => (
@@ -239,9 +252,16 @@ export function OnboardingScreen({ initialName, onComplete }: { initialName?: st
                       {subscriptionPeriod === option.value && <Check size={14} />}
                     </button>
                   ))}
+                {qualifyStep === 3 &&
+                  DEPENDENTS_OPTIONS.map((option) => (
+                    <button key={option.value} className={dependents === option.value ? "selected" : ""} onClick={() => setDependents(option.value)}>
+                      {option.label}
+                      {dependents === option.value && <Check size={14} />}
+                    </button>
+                  ))}
               </div>
-              <button className="question-next" onClick={() => (qualifyStep < 2 ? setQualifyStep(qualifyStep + 1) : goNext())}>
-                {qualifyStep < 2 ? "다음 조건" : "주거 선호 입력하기"} <ChevronRight size={16} />
+              <button className="question-next" onClick={() => (qualifyStep < 3 ? setQualifyStep(qualifyStep + 1) : goNext())}>
+                {qualifyStep < 3 ? "다음 조건" : "주거 선호 입력하기"} <ChevronRight size={16} />
               </button>
             </div>
           )}
@@ -284,6 +304,26 @@ export function OnboardingScreen({ initialName, onComplete }: { initialName?: st
                     {AREA_OPTIONS.map((option) => (
                       <button key={option.value} className={interestAreas.includes(option.value) ? "selected" : ""} onClick={() => toggleArea(option.value)}>
                         {option.label} {interestAreas.includes(option.value) && <Check size={12} />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="preference-group">
+                  <span>희망 주거 형태</span>
+                  <div className="mini-choice-row">
+                    {HOME_TYPE_OPTIONS.map((option) => (
+                      <button key={option.value} className={homeType === option.value ? "selected" : ""} onClick={() => setHomeType(homeType === option.value ? null : option.value)}>
+                        {option.label} {homeType === option.value && <Check size={12} />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="preference-group">
+                  <span>입주 희망 시기</span>
+                  <div className="mini-choice-row">
+                    {MOVE_IN_OPTIONS.map((option) => (
+                      <button key={option.value} className={moveInTiming === option.value ? "selected" : ""} onClick={() => setMoveInTiming(moveInTiming === option.value ? null : option.value)}>
+                        {option.label} {moveInTiming === option.value && <Check size={12} />}
                       </button>
                     ))}
                   </div>

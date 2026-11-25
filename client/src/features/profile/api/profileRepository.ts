@@ -1,7 +1,9 @@
 import { DEFAULT_PROFILE } from "../data/options";
 import type {
   AreaPreference,
+  HomeType,
   IncomeBracket,
+  MoveInTiming,
   Region,
   SubscriptionPeriod,
   UserProfile,
@@ -26,6 +28,8 @@ const STORAGE_KEY = "zipcok.profile.v1";
 const INCOME_VALUES: readonly IncomeBracket[] = ["under30", "30to50", "50to70", "70to100", "over100"];
 const SUBSCRIPTION_VALUES: readonly SubscriptionPeriod[] = ["under6m", "6mTo1y", "1to2y", "2to5y", "5to10y", "over10y"];
 const AREA_VALUES: readonly AreaPreference[] = ["upTo59", "60to84", "over85"];
+const HOME_TYPE_VALUES: readonly HomeType[] = ["apartment", "officetel", "townhouse"];
+const MOVE_IN_VALUES: readonly MoveInTiming[] = ["within1y", "1to3y", "any"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -54,7 +58,8 @@ function parseProfile(value: unknown): UserProfile | null {
   const homelessYears = nullableInt(value.homelessYears);
   const budgetMin = nullableInt(value.budgetMin);
   const budgetMax = nullableInt(value.budgetMax);
-  if (!residence || age === undefined || homelessYears === undefined || budgetMin === undefined || budgetMax === undefined) return null;
+  const dependents = nullableInt(value.dependents);
+  if (!residence || age === undefined || homelessYears === undefined || budgetMin === undefined || budgetMax === undefined || dependents === undefined) return null;
   if (!Array.isArray(value.interestRegions) || !Array.isArray(value.interestAreas)) return null;
   const interestRegions = value.interestRegions.map(parseRegion);
   if (interestRegions.some((r) => r === null)) return null;
@@ -65,8 +70,11 @@ function parseProfile(value: unknown): UserProfile | null {
     homelessYears,
     incomeBracket: oneOf(INCOME_VALUES, value.incomeBracket) ? value.incomeBracket : null,
     subscriptionPeriod: oneOf(SUBSCRIPTION_VALUES, value.subscriptionPeriod) ? value.subscriptionPeriod : null,
+    dependents,
     interestRegions: interestRegions.filter((r): r is Region => r !== null),
     interestAreas: value.interestAreas.filter((a): a is AreaPreference => oneOf(AREA_VALUES, a)),
+    homeType: oneOf(HOME_TYPE_VALUES, value.homeType) ? value.homeType : null,
+    moveInTiming: oneOf(MOVE_IN_VALUES, value.moveInTiming) ? value.moveInTiming : null,
     budgetMin,
     budgetMax,
     savedAt: typeof value.savedAt === "string" ? value.savedAt : null,
