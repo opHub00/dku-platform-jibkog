@@ -13,7 +13,7 @@ import type { Store } from "../store/types";
 
 /**
  * 카탈로그·지도 API의 서버 쪽 인터페이스(docs/api-catalog.md).
- * 지금은 fixture.ts가 샘플 5개로 구현한다. 실제 청약홈·카카오 데이터 구현은 이 인터페이스를 그대로 구현하면 된다.
+ * live.ts가 청약홈·카카오 수집 캐시를 연결한다. 키가 없으면 fixture.ts가 응답한다.
  */
 export interface CatalogSource {
   searchComplexes(query: { q: string; region: CatalogRegion | null; page: number }): Promise<CatalogComplexPage>;

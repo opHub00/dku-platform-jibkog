@@ -77,6 +77,7 @@ export function buildSeedTables(now: Date = new Date()): Tables {
       premium: listing.premium,
       option_cost: listing.optionCost,
       paid_amount: listing.paidAmount,
+      is_demo: true,
     });
     for (const doc of listing.documents) {
       tables.trade_documents.push({ listing_id: listing.id, kind: doc.type, status: doc.status, storage_key: null });

@@ -1,7 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { clearSessionCookie, parseCookies, SESSION_COOKIE, sessionCookie } from "../auth";
-import { createFixtureCatalog } from "../catalog/fixture";
+import path from "node:path";
+import { createLiveCatalog } from "../catalog/live";
 import { parseBounds, parseComplexQuery, parseNoticeQuery } from "../catalog/source";
+import { syncCatalogExamples } from "../catalog/store";
 import { EventHub } from "../realtime";
 import { createJsonFileStore } from "../store/jsonFileStore";
 import { buildSeedTables } from "../store/seed";
@@ -40,14 +42,21 @@ function id(ctx: Ctx, key: string): number {
   return value;
 }
 
-export function createAppApi(options: { dataFile: string; log?: (message: string) => void }) {
+export function createAppApi(options: { dataFile: string; log?: (message: string) => void; catalogTest?: { keys: { applyhome: string | null; kakao: string | null }; fetchImpl: typeof fetch; minIntervalMs?: number } }) {
   const store: Store = createJsonFileStore(options.dataFile, () => buildSeedTables());
   const hub = new EventHub();
   const routes: Route[] = [];
   const route = (method: string, path: string, handler: Handler) => routes.push({ method, ...compile(path), handler });
 
-  // 청약 공고 카탈로그. 지금은 샘플 5개 임시 응답(server/catalog/fixture.ts)
-  const catalog = createFixtureCatalog();
+  const live = createLiveCatalog({
+    envDir: path.dirname(path.dirname(options.dataFile)),
+    cacheFile: path.join(path.dirname(options.dataFile), "catalog.json"),
+    log: options.log,
+    ...options.catalogTest,
+  });
+  const catalog = live.catalog;
+  const catalogReady = live.seedCandidates().then((details) => details.length ? syncCatalogExamples(store, details, options.log) : 0)
+    .catch((error: unknown) => { options.log?.(`청약 예시 매물 생성 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`); });
   const query = (req: IncomingMessage) => new URL(req.url ?? "/", "http://localhost").searchParams;
 
   const notifyChat = (change: svc.ChatChange) =>
@@ -75,15 +84,16 @@ export function createAppApi(options: { dataFile: string; log?: (message: string
   });
 
   // ---------- 단지·매물 ----------
-  route("GET", "/api/complexes", async ({ res }) => sendJson(res, 200, { complexes: await svc.listComplexes(store) }));
-  route("GET", "/api/listings", async ({ res, user }) => sendJson(res, 200, { listings: await svc.listListings(store, user?.id ?? null) }));
+  route("GET", "/api/complexes", async ({ res }) => { await catalogReady; sendJson(res, 200, { complexes: await svc.listComplexes(store) }); });
+  route("GET", "/api/listings", async ({ res, user }) => { await catalogReady; sendJson(res, 200, { listings: await svc.listListings(store, user?.id ?? null) }); });
   route("POST", "/api/listings", async ({ req, res, user }) => {
+    await catalogReady;
     const me = svc.requireUser(user);
-    const listing = await svc.createListing(store, me.id, await readJson(req));
+    const listing = await svc.createListing(store, me.id, await readJson(req), catalog);
     hub.publishAll({ type: "listing.changed", listingId: listing.id });
     sendJson(res, 201, { listing });
   });
-  route("GET", "/api/listings/:id", async (ctx) => sendJson(ctx.res, 200, { listing: await svc.getListing(store, ctx.user?.id ?? null, id(ctx, "id")) }));
+  route("GET", "/api/listings/:id", async (ctx) => { await catalogReady; sendJson(ctx.res, 200, { listing: await svc.getListing(store, ctx.user?.id ?? null, id(ctx, "id")) }); });
   route("PATCH", "/api/listings/:id", async (ctx) => {
     const me = svc.requireUser(ctx.user);
     const listing = await svc.updateListing(store, me.id, id(ctx, "id"), await readJson(ctx.req));
@@ -99,20 +109,21 @@ export function createAppApi(options: { dataFile: string; log?: (message: string
   });
 
   // ---------- 청약 카탈로그·지도(docs/api-catalog.md) ----------
-  route("GET", "/api/catalog/complexes", async ({ req, res }) => sendJson(res, 200, await catalog.searchComplexes(parseComplexQuery(query(req)))));
+  route("GET", "/api/catalog/complexes", async ({ req, res }) => { await catalogReady; sendJson(res, 200, await catalog.searchComplexes(parseComplexQuery(query(req)))); });
   // 카탈로그 단지 id는 숫자만이라고 가정하지 않는다
   routes.push({
     method: "GET",
     pattern: /^\/api\/catalog\/complexes\/([A-Za-z0-9_-]{1,64})$/,
     keys: ["id"],
     handler: async ({ res, params }) => {
+      await catalogReady;
       const complex = await catalog.getComplex(params.id ?? "");
       if (!complex) throw notFound("단지");
       sendJson(res, 200, { complex });
     },
   });
-  route("GET", "/api/catalog/notices", async ({ req, res }) => sendJson(res, 200, { notices: await catalog.listNotices(parseNoticeQuery(query(req))) }));
-  route("GET", "/api/map/markers", async ({ req, res }) => sendJson(res, 200, await catalog.mapMarkers(store, parseBounds(query(req)))));
+  route("GET", "/api/catalog/notices", async ({ req, res }) => { await catalogReady; sendJson(res, 200, { notices: await catalog.listNotices(parseNoticeQuery(query(req))) }); });
+  route("GET", "/api/map/markers", async ({ req, res }) => { await catalogReady; sendJson(res, 200, await catalog.mapMarkers(store, parseBounds(query(req)))); });
 
   // ---------- 채팅 ----------
   route("GET", "/api/chats", async ({ res, user }) => sendJson(res, 200, { rooms: await svc.listChats(store, svc.requireUser(user).id) }));

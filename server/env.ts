@@ -7,7 +7,9 @@ export type DotenvKey =
   | "GEMINI_API_KEY"
   | "GEMINI_MODEL"
   | "NAVER_CLIENT_ID"
-  | "NAVER_CLIENT_SECRET";
+  | "NAVER_CLIENT_SECRET"
+  | "DATA_GO_KR_SERVICE_KEY"
+  | "KAKAO_REST_API_KEY";
 
 /**
  * .env / .env.local 파일에서만 값을 읽는다(.env.local이 .env를 덮어쓴다).

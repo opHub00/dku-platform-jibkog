@@ -5,7 +5,7 @@
 
 - 응답 타입: [client/src/features/catalog/types.ts](../client/src/features/catalog/types.ts). 서버도 이 파일을 상대 경로로 import한다. 그래서 `@/` import를 쓰지 않는다.
 - 임시 응답: [server/catalog/fixture.ts](../server/catalog/fixture.ts). 청약 공고 샘플 5개를 담고 있고, 개발 서버(`pnpm dev`)에 이미 연결되어 있다. 화면은 서버 구현을 기다리지 않고 이 응답으로 개발한다.
-- 서버 인터페이스: [server/catalog/source.ts](../server/catalog/source.ts)의 `CatalogSource`와 쿼리 파싱 함수. 실제 구현은 `createFixtureCatalog()` 자리를 이 인터페이스를 구현한 함수로 바꾸면 된다. 연결 위치는 `server/api/app.ts`다.
+- 서버 인터페이스: [server/catalog/source.ts](../server/catalog/source.ts)의 `CatalogSource`와 쿼리 파싱 함수. [server/catalog/live.ts](../server/catalog/live.ts)가 수집·캐시를 맡고, 키가 없거나 첫 수집에 실패하면 fixture를 사용한다. 연결 위치는 `server/api/app.ts`다.
 - 공통 규칙은 [docs/api.md](api.md)를 따른다. 오류 본문은 `{ error: { code, message } }`이고, 금액은 원 단위 정수다.
 
 ## 담당 나누기
@@ -234,23 +234,30 @@ GET /api/map/markers?bounds=37.40,126.80,37.70,127.20
 }
 ```
 
-서버 검증 규칙(서버 담당이 구현, 지금 서버는 이 두 필드를 무시한다):
+서버 검증 규칙:
 
 - `catalogComplexId`와 `housingModelNumber`는 둘 다 보내거나 둘 다 빼야 한다. 하나만 오면 400이다.
 - 없는 카탈로그 단지나 그 단지에 없는 모델번호면 400 "단지 정보를 찾을 수 없어요" / "주택형 정보를 찾을 수 없어요"를 준다.
 - 두 필드가 있으면 `area`는 그 주택형의 `supplyAreaM2`와 0.5㎡ 이내여야 한다. `salePrice`는 `maxPriceWon` 이하여야 한다. 최고가보다 싸게 분양받은 층은 있어도 비싸게 분양받은 층은 없기 때문이다.
-- 카탈로그 단지로 등록하면 서버가 기존 단지 테이블(`complexes`)에 그 단지를 만들거나 연결한다. 그 id를 `complexId`로 쓴다. 이때 화면은 `complexId`를 비워 보낼 수 있다. 정확한 규칙은 서버 구현 때 이 문서에 적는다.
+- 카탈로그 단지로 등록하면 서버가 기존 단지 테이블(`complexes`)에 `catalog-<catalogComplexId>` id로 만들거나 연결한다. 그 id를 `complexId`로 쓴다. 이때 화면은 `complexId`를 비워 보낼 수 있다. 값을 보내면 이 id와 같아야 한다.
 - 매물 응답(`GET /api/listings`, `GET /api/listings/:id`, 등록 응답)에는 보낸 두 필드를 그대로 돌려준다.
 
 ## 6. 예시 매물 표시 `isDemo`
 
 - 매물 응답(`PresaleListing`)과 매물 핀(`ListingMarker`)에 `isDemo: boolean`을 넣는다. 타입은 `ListingDemoFlag`다.
-- 서버가 만든 예시(시드) 매물이면 `true`다. 지금 기준은 개발용 시드 계정(`@jibkog.dev`)이 올린 매물이다. 사용자가 직접 등록한 매물은 `false`다.
+- 서버가 만든 예시(시드) 매물이면 `true`다. 사용자가 직접 등록한 매물은 `false`다. 이전 저장 파일의 시드 매물은 개발용 시드 계정(`@jibkog.dev`)으로 판별한다.
 - 화면은 `true`인 매물에 "예시 매물" 배지(`StatusPill tone="sand"`)를 붙인다.
 - 등록 본문에는 보내지 않는다. 보내도 서버가 무시한다.
 - 지금 상태
   - 지도 핀 임시 응답에는 들어 있다.
-  - `GET /api/listings` 응답에는 서버 담당이 시드 작업 때 넣는다. 그 전까지 화면은 값이 없으면 `false`로 본다.
+  - `GET /api/listings` 응답에도 들어 있다. 화면은 값이 없으면 `false`로 본다.
+
+## 실제 수집·캐시
+
+- 서버 시작 시 `DATA_GO_KR_SERVICE_KEY`, `KAKAO_REST_API_KEY`를 `.env` 또는 `.env.local`에서 읽는다. 두 키가 모두 있으면 서울·경기·인천의 최근 3년 APT 공고와 각 공고의 주택형을 수집한다. [공공데이터포털 청약홈 분양정보 공식 문서](https://www.data.go.kr/data/15098547/openapi.do)의 `getAPTLttotPblancDetail`에는 `page`, `perPage`, `returnType`, `cond[SUBSCRPT_AREA_CODE_NM::EQ]`, `cond[RCRIT_PBLANC_DE::GTE]`를 보내고, `getAPTLttotPblancMdl`에는 `page`, `perPage`, `returnType`, `cond[HOUSE_MANAGE_NO::EQ]`, `cond[PBLANC_NO::EQ]`를 보낸다. 인증에는 `serviceKey`를 쓴다.
+- 주소는 [카카오 로컬 API 공식 문서](https://developers.kakao.com/docs/ko/local/dev-guide)의 `/v2/local/search/address.json`으로 조회한다. 같은 주소의 좌표 또는 조회 결과 없음은 캐시에 기록해 다시 요청하지 않는다.
+- 수집 결과는 `.data/catalog.json`에 원자적으로 저장한다. 캐시가 하루 이내면 재사용하고, 갱신이 실패하면 기존 캐시 또는 fixture를 사용한다. 키가 없으면 fixture 5개를 사용한다. 요청은 순차적으로 보내며 최소 간격과 갱신당 청약홈 800회·카카오 2,000회 상한을 둔다. 수집 진행·호출 수·대체 사용 여부를 서버 로그에 남기되 키는 기록하지 않는다.
+- 좌표와 최고가가 있는 수집 단지의 주택형에서 최대 40개 예시 매물을 만든다. 분양가는 해당 주택형 최고가, 프리미엄은 지역별 기준 비율을 사용한다. 개발용 판매자 계정에 배정하고 신뢰 리포트를 계산해 저장한다. 재시작해도 같은 카탈로그 단지·모델의 예시 매물은 중복 생성하지 않는다. 수집 후보가 30개 미만이면 가능한 수만 만든다.
 
 ## 임시 응답(fixture) 범위
 

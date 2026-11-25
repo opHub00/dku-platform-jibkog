@@ -64,6 +64,9 @@ export type ListingRow = {
   premium: number;
   option_cost: number;
   paid_amount: number;
+  catalog_complex_id?: string | null;
+  housing_model_number?: string | null;
+  is_demo?: boolean;
 };
 
 export type TradeDocumentKind = "salesContract" | "paymentProof" | "optionContract";
@@ -154,6 +157,9 @@ export interface StoreTx {
   listComplexes(): Promise<ComplexRow[]>;
   listComplexAreas(): Promise<ComplexAreaRow[]>;
   findComplex(id: string): Promise<ComplexRow | null>;
+  upsertDistrict(row: DistrictRow): Promise<void>;
+  upsertComplex(row: ComplexRow): Promise<void>;
+  upsertComplexArea(row: ComplexAreaRow): Promise<void>;
   // listings
   listTradeListings(): Promise<ListingRow[]>;
   findListing(id: number): Promise<ListingRow | null>;

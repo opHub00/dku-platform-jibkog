@@ -103,6 +103,15 @@ function createTx(data: FileData): StoreTx {
     async listComplexes() { return copy(t.complexes); },
     async listComplexAreas() { return copy(t.complex_areas); },
     async findComplex(id) { return copy(t.complexes.find((c) => c.id === id) ?? null); },
+    async upsertDistrict(row) { if (!t.districts.some((d) => d.id === row.id)) t.districts.push(copy(row)); },
+    async upsertComplex(row) {
+      const existing = t.complexes.find((c) => c.id === row.id);
+      if (existing) Object.assign(existing, copy(row));
+      else t.complexes.push(copy(row));
+    },
+    async upsertComplexArea(row) {
+      if (!t.complex_areas.some((a) => a.complex_id === row.complex_id && a.area_m2 === row.area_m2)) t.complex_areas.push(copy(row));
+    },
 
     async listTradeListings() { return copy(t.listings); },
     async findListing(id) { return copy(t.listings.find((l) => l.id === id) ?? null); },

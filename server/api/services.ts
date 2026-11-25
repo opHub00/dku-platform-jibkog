@@ -6,6 +6,8 @@ import type { Complex, PresaleDocument, PresaleListing, Sido, TrustReport } from
 import { evaluateTrust } from "../../client/src/features/presale/ai/trustEngine";
 import { parseAiModelInfo, parseContractExtraction, parseDescriptionScreening, type AiResult, type ContractExtraction, type DescriptionScreening } from "../../client/src/features/presale/ai/types";
 import { hashPassword, hashToken, newSessionToken, SESSION_DAYS, verifyPassword } from "../auth";
+import type { CatalogSource } from "../catalog/source";
+import { catalogStoreId, ensureCatalogComplex } from "../catalog/store";
 import type {
   ComplexAreaRow,
   ComplexRow,
@@ -105,6 +107,9 @@ function toPresaleListing(row: ListingRow, ctx: ListingContext): PresaleListing 
   return {
     id: row.id,
     complexId: row.complex_id,
+    ...(row.catalog_complex_id ? { catalogComplexId: row.catalog_complex_id } : {}),
+    ...(row.housing_model_number ? { housingModelNumber: row.housing_model_number } : {}),
+    isDemo: row.is_demo ?? (seller?.email.endsWith("@jibkog.dev") ?? false),
     seller: {
       id: row.seller_id,
       nickname: seller?.nickname ?? "판매자",
@@ -318,13 +323,24 @@ export async function getListing(store: Store, viewerId: number | null, listingI
   });
 }
 
-export async function createListing(store: Store, sellerId: number, input: unknown): Promise<PresaleListing> {
+export async function createListing(store: Store, sellerId: number, input: unknown, catalog?: CatalogSource): Promise<PresaleListing> {
   const body = requireRecord(input);
-  const complexId = stringField(body, "complexId", { min: 1, max: 64 });
+  const hasCatalogId = body.catalogComplexId !== undefined && body.catalogComplexId !== null && body.catalogComplexId !== "";
+  const hasModel = body.housingModelNumber !== undefined && body.housingModelNumber !== null && body.housingModelNumber !== "";
+  if (hasCatalogId !== hasModel) throw badRequest("카탈로그 단지와 주택형을 함께 보내주세요");
+  const catalogId = hasCatalogId ? stringField(body, "catalogComplexId", { min: 1, max: 64 }) : null;
+  const modelNumber = hasModel ? stringField(body, "housingModelNumber", { min: 1, max: 32 }) : null;
+  const catalogDetail = catalogId && catalog ? await catalog.getComplex(catalogId) : null;
+  if (catalogId && !catalogDetail) throw badRequest("단지 정보를 찾을 수 없어요");
+  const housingType = catalogDetail?.housingTypes.find((item) => item.modelNumber === modelNumber);
+  if (catalogDetail && !housingType) throw badRequest("주택형 정보를 찾을 수 없어요");
+  const complexId = catalogDetail ? catalogStoreId(catalogDetail.id) : stringField(body, "complexId", { min: 1, max: 64 });
+  if (catalogDetail && body.complexId && body.complexId !== complexId) throw badRequest("단지 정보가 일치하지 않아요");
   const area = body.area;
   if (typeof area !== "number" || !(area > 0) || area > 1000) throw badRequest("area는 0보다 큰 숫자여야 해요");
   const floor = intField(body, "floor", { min: 1, max: 99 }) as number;
   const salePrice = intField(body, "salePrice", { min: 1, max: MAX_WON }) as number;
+  if (housingType && (Math.abs(area - housingType.supplyAreaM2) > 0.5 || salePrice > housingType.maxPriceWon)) throw badRequest("주택형 면적 또는 분양가가 공고와 일치하지 않아요");
   const premium = intField(body, "premium", { min: 0, max: MAX_WON }) as number;
   const optionCost = intField(body, "optionCost", { min: 0, max: MAX_WON }) as number;
   const paidAmount = intField(body, "paidAmount", { min: 0, max: MAX_WON }) as number;
@@ -344,6 +360,7 @@ export async function createListing(store: Store, sellerId: number, input: unkno
   if (!contract || !screening) throw badRequest("verification 형식이 올바르지 않아요");
 
   const created = await store.write(async (tx) => {
+    if (catalogDetail) await ensureCatalogComplex(tx, catalogDetail);
     const complexRow = await tx.findComplex(complexId);
     if (!complexRow) throw badRequest("단지 정보를 찾을 수 없어요");
     const [districts, areas, complexRows, listingRows] = await Promise.all([tx.listDistricts(), tx.listComplexAreas(), tx.listComplexes(), tx.listTradeListings()]);
@@ -383,6 +400,9 @@ export async function createListing(store: Store, sellerId: number, input: unkno
       premium,
       option_cost: optionCost,
       paid_amount: paidAmount,
+      catalog_complex_id: catalogId,
+      housing_model_number: modelNumber,
+      is_demo: false,
     });
     for (const doc of docs) await tx.upsertTradeDocument({ listing_id: row.id, kind: doc.kind, status: doc.status, storage_key: null });
     await tx.insertTrustReport({ listing_id: row.id, evaluated_at: trust.evaluatedAt, score: trust.score, mode: trust.mode, report_json: trust });

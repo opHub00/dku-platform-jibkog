@@ -21,7 +21,7 @@ import { inBounds, type CatalogSource } from "./source";
 
 // ---------------------------------------------------------------- results.json 원본 형식(필요한 필드만)
 
-type RawHousingType = {
+export type RawHousingType = {
   model_number: string;
   housing_type: string;
   /** ㎡, 문자열 */
@@ -32,7 +32,7 @@ type RawHousingType = {
   special_supply_units: number;
 };
 
-type RawNotice = {
+export type RawNotice = {
   id: string;
   notice_number: string;
   title: string;
@@ -213,13 +213,22 @@ const normalize = (s: string) => s.replace(/\s+/g, "").toLowerCase();
 
 // ---------------------------------------------------------------- 임시 구현
 
-/** 시드 계정(개발용) 이메일 도메인. 이 계정이 올린 매물은 예시 매물(isDemo)이다 */
-const DEMO_EMAIL_DOMAIN = "@jibkog.dev";
-
 export function createFixtureCatalog(samples: readonly RawNotice[] = SAMPLE_NOTICES): CatalogSource {
   const details = () => {
     const today = todayKst();
-    return samples.map((raw) => toComplexDetail(raw, today)).sort((a, b) => (b.notices[0]?.publishedOn ?? "").localeCompare(a.notices[0]?.publishedOn ?? ""));
+    const groups = new Map<string, RawNotice[]>();
+    for (const raw of samples) groups.set(raw.id, [...(groups.get(raw.id) ?? []), raw]);
+    return [...groups.values()].map((group) => {
+      group.sort((a, b) => b.published_on.localeCompare(a.published_on));
+      const detail = toComplexDetail(group[0], today);
+      const housingTypes = new Map([...group].reverse().flatMap((raw) => raw.housing_types.map((type) => [type.model_number, toHousingType(type)] as const)));
+      detail.housingTypes = [...housingTypes.values()].sort((a, b) => a.modelNumber.localeCompare(b.modelNumber));
+      detail.housingTypeCount = detail.housingTypes.length;
+      const prices = detail.housingTypes.map((type) => type.maxPriceWon);
+      detail.maxPriceRangeWon = { min: prices.length ? Math.min(...prices) : 0, max: prices.length ? Math.max(...prices) : 0 };
+      detail.notices = group.map((raw) => toNotice(raw, today));
+      return detail;
+    }).sort((a, b) => (b.notices[0]?.publishedOn ?? "").localeCompare(a.notices[0]?.publishedOn ?? ""));
   };
 
   return {
@@ -261,16 +270,11 @@ export function createFixtureCatalog(samples: readonly RawNotice[] = SAMPLE_NOTI
 
       // 매물 핀: 공개 매물(판매 중·예약 중)만. 좌표는 매물 단지 좌표
       const [listings, complexes] = await Promise.all([svc.listListings(store, null), svc.listComplexes(store)]);
-      const sellerIds = [...new Set(listings.map((l) => l.seller.id).filter((v): v is number => typeof v === "number"))];
-      const demoSellers = await store.read(async (tx) => {
-        const users = await Promise.all(sellerIds.map((sid) => tx.findUserById(sid)));
-        return new Set(users.filter((u) => u !== null && u.email.endsWith(DEMO_EMAIL_DOMAIN)).map((u) => u?.id));
-      });
       const listingMarkers: ListingMarker[] = listings.flatMap((l): ListingMarker[] => {
         if (l.status !== "selling" && l.status !== "reserved") return [];
         const c = complexes.find((x) => x.id === l.complexId);
         if (!c || !inBounds(bounds, c.lat, c.lng)) return [];
-        return [{ kind: "listing", key: `listing-${l.id}`, listingId: l.id, complexId: c.id, lat: c.lat, lng: c.lng, title: c.name, areaM2: l.area, premiumWon: l.premium, isDemo: demoSellers.has(l.seller.id) }];
+        return [{ kind: "listing", key: `listing-${l.id}`, listingId: l.id, complexId: c.id, lat: c.lat, lng: c.lng, title: c.name, areaM2: l.area, premiumWon: l.premium, isDemo: l.isDemo === true }];
       });
 
       const all: MapMarker[] = [...listingMarkers, ...noticeMarkers];
