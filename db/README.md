@@ -20,6 +20,14 @@ node db/verify.mjs
 
 ## 매물 조회
 
+청약홈 수집기가 만든 결과 파일은 마이그레이션 후 아래 명령으로 불러옵니다. 파일 경로는 실제 저장 위치에 맞게 바꿔 주세요.
+
+```powershell
+node db/import-notices.mjs api/results.json
+```
+
+주택관리번호와 공고번호가 같으면 기존 매물 ID와 찜을 유지하고 공고 내용을 갱신합니다. 주택형이나 서류 목록이 `null`이면 이전 값을 유지하고, 빈 배열이면 해당 목록을 비웁니다. 시군구 코드를 확인할 수 없는 공고는 주소만으로 표시합니다. 파일 처리 중 오류가 발생하면 해당 파일의 변경을 모두 되돌립니다.
+
 첫 번째 인자로 연결된 `pg.Client` 또는 `pg.Pool`을 전달하세요. 아래 예시에서 `userId`는 서버가 인증한 사용자의 ID입니다.
 
 ```js
@@ -86,3 +94,19 @@ erDiagram
 ## 참고한 브랜치
 
 화면 데이터는 `main`의 `6af1898`, 분양권 모델은 `feature/presale-trade`의 `176a8a5`, 외부 API 응답 형식은 `feature/api`의 `15e5277`을 기준으로 작성했습니다. 인증, HTTP API, 공공데이터 수집기는 각각 연동이 필요합니다.
+
+## 앱 API 공용 PostgreSQL 연결
+
+루트에서 `pnpm install` 및 `npm install --prefix db`를 실행하고, 실제 DB의 `DATABASE_URL`을 셸 환경변수 또는 루트 .env.local에 설정합니다. 마이그레이션 CLI는 셸 환경변수를 읽습니다.
+
+```powershell
+$env:DATABASE_URL = 'postgresql://USER:PASSWORD@localhost:5432/jibkog'
+node db/manage.mjs migrate
+# 빈 개발 DB에서만 프론트와 동일한 시연 계정을 넣을 때:
+$env:DATABASE_SEED_DEMO = '1'
+pnpm dev
+````
+
+시연용 계정은 최초 요청에서만 생성됩니다. 운영 DB에는 DATABASE_SEED_DEMO를 설정하지 마세요. 기존 db/manage.mjs seed는 별도 SQL 검증용 데이터로, 앱 시드와 함께 사용하지 않습니다. 기존 계정은 비활성 로그인 정보로 유지됩니다. 기존 JSON 파일의 사용자 데이터는 자동으로 이관되지 않습니다. DATABASE_URL 설정 후 연결 오류가 나도 JSON으로 자동 전환하지 않습니다. 공용 DB 연결 정보는 팀 내부에서 안전하게 공유하고 저장소에 커밋하지 마세요.
+
+`node db/verify-store.mjs`는 임시 스키마에서 실제 서비스 계층과 PostgreSQL을 연결하여 검증합니다.
