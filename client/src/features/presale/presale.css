@@ -77,3 +77,6 @@
 
 .ps-actions button { cursor: pointer; }
 .ps-actions button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* 시연용 예시 매물 배지(isDemo). 카드 이미지 안에서는 기존 태그(왼쪽 위)와 겹치지 않게 왼쪽 아래에 둔다 */
+.listing-image-wrap .ps-demo-pill .status-pill { top: auto; bottom: 8px; }

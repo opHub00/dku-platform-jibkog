@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   Bot,
@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tab, Listing } from "@/types";
-import { listings } from "@/data/listings";
 import { Logo } from "@/components/common/Logo";
 import { StatusPill } from "@/components/common/StatusPill";
 import { SectionHeader } from "@/components/common/SectionHeader";
@@ -46,9 +45,15 @@ import { aiChatRepository } from "@/features/chat/api/aiChatRepository";
 import { TradeChatRoom } from "@/features/chat/components/TradeChatRoom";
 import { ChatRoomView } from "@/pages/ChatRoom";
 import { ChatSessionList } from "@/pages/ChatSessionList";
+import { useNotices } from "@/features/catalog/lib/useNotices";
+import { formatDay, noticeToListing } from "@/features/catalog/lib/noticeText";
 
 function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
+  // 접수 중이거나 곧 시작하는 공고 중 가장 빠른 것
+  const nextNotice = homeListings
+    .filter((item) => item.notice && item.notice.status !== "closed")
+    .sort((a, b) => (a.notice?.applicationsOpenOn ?? "").localeCompare(b.notice?.applicationsOpenOn ?? ""))[0];
   const profile = useProfile();
   const firstInterest = profile.interestRegions[0];
   const firstInterestTradeCount = firstInterest
@@ -101,7 +106,7 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
           <SectionHeader eyebrow="맞춤 알림" title="놓치면 아쉬운 소식" action="전체보기" onAction={() => toast("맞춤 알림 전체보기를 준비 중이에요")} />
           <div className="alert-list">
             <div className="alert-row"><span className="alert-dot green-dot" /><div><strong>관심지역에 새 거래가 올라왔어요</strong><p>래미안 원베일리 · 프리미엄 3.2억</p></div><span className="alert-time">10분 전</span></div>
-            <div className="alert-row"><span className="alert-dot sand-dot" /><div><strong>청약 일정이 곧 시작돼요</strong><p>마곡나루역 오피스텔 · 11월 24일</p></div><span className="alert-time">어제</span></div>
+            <div className="alert-row" onClick={() => nextNotice && onOpenListing(nextNotice)}><span className="alert-dot sand-dot" /><div><strong>{nextNotice?.notice ? (nextNotice.notice.status === "open" ? "청약 접수가 진행 중이에요" : "청약 일정이 곧 시작돼요") : "다가오는 청약 공고가 없어요"}</strong><p>{nextNotice?.notice ? `${nextNotice.title} · ${nextNotice.notice.status === "open" ? `${formatDay(nextNotice.notice.applicationsCloseOn)} 마감` : `${formatDay(nextNotice.notice.applicationsOpenOn)} 시작`}` : "새 공고가 올라오면 알려드릴게요"}</p></div><span className="alert-time">{nextNotice?.date ?? ""}</span></div>
           </div>
         </section>
 
@@ -165,10 +170,12 @@ export default function Home() {
   const [authPrompt, setAuthPrompt] = useState<{ reason: string; then?: () => void } | null>(null);
   const { user } = useAuth();
   const [chatFilter, setChatFilter] = useState<{ id: number; title: string } | null>(null);
-  const noticeListings = listings.filter((listing) => listing.type === "notice");
-  const [homeListings, setHomeListings] = useState<Listing[]>(noticeListings);
+  const notices = useNotices();
+  const noticeListings = useMemo(() => (notices ?? []).map((notice) => noticeToListing(notice)), [notices]);
+  const [tradeHomeListings, setTradeHomeListings] = useState<Listing[]>([]);
+  const homeListings = useMemo(() => [...tradeHomeListings, ...noticeListings], [tradeHomeListings, noticeListings]);
   const [postedListings, setPostedListings] = useState<Listing[]>([]);
-  const [likedIds, setLikedIds] = useState<number[]>(noticeListings.filter((listing) => listing.liked).map((listing) => listing.id));
+  const [likedIds, setLikedIds] = useState<number[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -189,16 +196,18 @@ export default function Home() {
           .filter((listing): listing is Listing => listing !== null);
       const visibleTradeListings = toUiListings(visiblePresaleListings);
       const allTradeListings = toUiListings(allPresaleListings);
-      setHomeListings([...visibleTradeListings, ...noticeListings]);
+      setTradeHomeListings(visibleTradeListings);
       setPostedListings(
         allTradeListings.filter(
           // 내 매물 여부는 서버가 로그인 정보로 판단한다
           (listing) => listing.presale?.isMine === true,
         ),
       );
-      setLikedIds([
+      // 공고 찜은 이 기기에서만 기억한다. 거래 매물 찜만 서버 값으로 바꾼다
+      const tradeIds = new Set(allTradeListings.map((listing) => listing.id));
+      setLikedIds((current) => [
         ...allTradeListings.filter((listing) => listing.liked).map((listing) => listing.id),
-        ...noticeListings.filter((listing) => listing.liked).map((listing) => listing.id),
+        ...current.filter((id) => !tradeIds.has(id)),
       ]);
     };
     void reloadListings();

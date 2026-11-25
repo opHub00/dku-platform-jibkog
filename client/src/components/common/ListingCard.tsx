@@ -3,6 +3,7 @@ import type { Listing } from "@/types";
 import { calcTotalRequiredFunds } from "@/features/presale/lib/funds";
 import { formatWon } from "@/features/presale/lib/format";
 import { StatusPill } from "./StatusPill";
+import { DemoListingPill } from "@/features/presale/components/DemoListingPill";
 
 export function ListingCard({
   listing,
@@ -20,6 +21,7 @@ export function ListingCard({
       <div className="listing-image-wrap">
         <img src={listing.image} alt="" className="listing-image" />
         <StatusPill tone={listing.tagTone}>{listing.tag}</StatusPill>
+        {listing.presale?.isDemo && <DemoListingPill />}
         <button
           className={`image-heart ${listing.liked ? "liked" : ""}`}
           onClick={(event) => {

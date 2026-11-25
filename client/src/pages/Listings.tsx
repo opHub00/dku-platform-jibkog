@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, Layers, Map as MapIcon, MapPin, MoreHorizontal, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import type { Listing, ListingType } from "@/types";
-import { listings } from "@/data/listings";
 import { ListingCard } from "@/components/common/ListingCard";
 import { presaleRepository } from "@/features/presale/api/presaleRepository";
 import { toListing } from "@/features/presale/lib/toListing";
 import { formatWonShort } from "@/features/presale/lib/format";
-import { buildDistrictMarkers, projectToMap, spreadPositions, type DistrictMarker, type MapObstacle, type MapPosition } from "@/features/presale/lib/mapProjection";
+import { buildDistrictMarkers, districtKey, projectToMap, spreadPositions, type DistrictMarker, type MapObstacle, type MapPosition } from "@/features/presale/lib/mapProjection";
+import type { Complex } from "@/features/presale/types";
+import type { MapMarker } from "@/features/catalog/types";
+import { useNotices } from "@/features/catalog/lib/useNotices";
+import { noticeToListing } from "@/features/catalog/lib/noticeText";
+import { KakaoMap } from "@/features/map/components/KakaoMap";
 import "@/features/presale/presale.css";
 import { useProfile } from "@/features/profile/lib/useProfile";
 import { interestHeadline } from "@/features/profile/lib/profileText";
@@ -142,6 +146,12 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
   const [mapMode, setMapMode] = useState<MapMode>("pins");
   const [regionFilter, setRegionFilter] = useState<string | null>(null);
   const [regions, setRegions] = useState<DistrictMarker[]>([]);
+  const [complexes, setComplexes] = useState<Complex[]>([]);
+  /** 카카오 지도 화면 안에 보이는 핀. 그림 지도(대체 화면)면 null */
+  const [visibleMarkers, setVisibleMarkers] = useState<MapMarker[] | null>(null);
+  const [mapFocus, setMapFocus] = useState<{ lat: number; lng: number } | null>(null);
+  const notices = useNotices();
+  const noticeListings = useMemo(() => (notices ?? []).map((notice) => noticeToListing(notice)), [notices]);
 
   useEffect(() => {
     let active = true;
@@ -151,6 +161,7 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
     ]).then(([presaleListings, complexes]) => {
       if (!active) return;
       setRegions(buildDistrictMarkers(presaleListings, complexes));
+      setComplexes(complexes);
       const complexById = new Map(complexes.map((complex) => [complex.id, complex]));
       setTradeListings(
         presaleListings
@@ -167,8 +178,8 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
   }, []);
 
   const allListings = useMemo(
-    () => [...tradeListings, ...listings.filter((item) => item.type === "notice")],
-    [tradeListings],
+    () => [...tradeListings, ...noticeListings],
+    [tradeListings, noticeListings],
   );
   const filteredListings = useMemo(
     () =>
@@ -181,8 +192,48 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
   );
   const totalRegionCount = regions.reduce((sum, region) => sum + region.listingCount, 0);
 
+  // ---------- 카카오 지도 핀 ----------
+  const complexById = useMemo(() => new Map(complexes.map((complex) => [complex.id, complex])), [complexes]);
+  const noticeById = useMemo(() => new Map(noticeListings.map((listing) => [listing.notice?.id, listing])), [noticeListings]);
+  const tradeById = useMemo(() => new Map(tradeListings.map((listing) => [listing.id, listing])), [tradeListings]);
+  const districtOf = useCallback((marker: MapMarker): string | null => {
+    if (marker.kind === "notice") return noticeById.get(marker.noticeId)?.district ?? null;
+    const complex = complexById.get(marker.complexId);
+    return complex ? districtKey(complex.sido, complex.sigungu) : null;
+  }, [complexById, noticeById]);
+  const markerFilter = useCallback(
+    (marker: MapMarker) =>
+      (filter === "all" || (filter === "trade" ? marker.kind === "listing" : marker.kind === "notice")) &&
+      (regionFilter === null || districtOf(marker) === regionFilter),
+    [filter, regionFilter, districtOf],
+  );
+  const pinPrice = useCallback((marker: Extract<MapMarker, { kind: "listing" }>) => tradeById.get(marker.listingId)?.price.split(" ")[0] ?? null, [tradeById]);
+  async function openMarker(marker: MapMarker) {
+    if (marker.kind === "notice") {
+      const listing = noticeById.get(marker.noticeId);
+      if (listing) onOpenListing(listing);
+      else toast("공고 정보를 불러오는 중이에요. 잠시 뒤 다시 눌러주세요");
+      return;
+    }
+    const known = tradeById.get(marker.listingId);
+    if (known) return onOpenListing(known);
+    const presale = await presaleRepository.getListing(marker.listingId);
+    const complex = presale ? await presaleRepository.getComplex(presale.complexId) : null;
+    if (presale && complex) onOpenListing(toListing(presale, complex));
+    else toast("매물 정보를 찾을 수 없어요");
+  }
+  /** 지도 아래 목록: 카카오 지도면 지금 화면 안의 핀, 그림 지도면 기존처럼 필터 결과 */
+  const bottomListings = visibleMarkers === null
+    ? filteredListings
+    : visibleMarkers.flatMap((marker) => {
+        const listing = marker.kind === "listing" ? tradeById.get(marker.listingId) : noticeById.get(marker.noticeId);
+        return listing ? [listing] : [];
+      });
+
   function selectRegion(key: string | null) {
     setRegionFilter(key);
+    const region = regions.find((item) => item.key === key);
+    if (region) setMapFocus({ ...region.center });
     if (key !== null) {
       setMapMode("pins");
       if (filter === "notice") setFilter("all");
@@ -198,8 +249,8 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
         <div className="filter-row">{filterOptions.map((option) => <button key={option.id} className={`filter-chip ${filter === option.id ? "active" : ""}`} onClick={() => setFilter(option.id)}>{option.label}<span>{option.id === "all" ? allListings.length : allListings.filter((item) => item.type === option.id).length}</span></button>)}</div>
         <div className="filter-row ps-region-row"><button className={`filter-chip ${regionFilter === null ? "active" : ""}`} onClick={() => selectRegion(null)}>전체 지역<span>{totalRegionCount}건</span></button>{regions.map((region) => <button key={region.key} className={`filter-chip ${regionFilter === region.key ? "active" : ""}`} onClick={() => selectRegion(regionFilter === region.key ? null : region.key)}>{region.key}<span>{region.listingCount}건 · 평균 {formatWonShort(region.averagePremium)}</span></button>)}</div>
         <div className="listing-toolbar"><span><strong>{filteredListings.length}개</strong>의 매물이 있어요</span><div className="view-toggle"><button className={viewMode === "map" ? "active" : ""} onClick={() => setViewMode("map")}><MapIcon size={15} />지도</button><button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")}><MoreHorizontal size={15} />목록</button></div></div>
-        {viewMode === "map" ? <MapCanvas filteredListings={filteredListings} onOpenListing={onOpenListing} mode={mapMode} onModeChange={setMapMode} regions={regions} onSelectRegion={selectRegion} /> : <div className="listing-stack">{filteredListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} />)}</div>}
-        {viewMode === "map" && <div className="map-bottom-list"><div className="map-bottom-heading"><span>지도에서 보고 있는 매물</span><button onClick={() => setViewMode("list")}>목록으로 <ChevronRight size={14} /></button></div>{filteredListings.slice(0, 2).map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} compact />)}</div>}
+        {viewMode === "map" ? <KakaoMap mode={mapMode} onModeChange={setMapMode} filter={markerFilter} districtOf={districtOf} pinPrice={pinPrice} onOpenMarker={(marker) => void openMarker(marker)} onVisibleChange={setVisibleMarkers} focus={mapFocus} fallback={<MapCanvas filteredListings={filteredListings} onOpenListing={onOpenListing} mode={mapMode} onModeChange={setMapMode} regions={regions} onSelectRegion={selectRegion} />} /> : <div className="listing-stack">{filteredListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} />)}</div>}
+        {viewMode === "map" && <div className="map-bottom-list"><div className="map-bottom-heading"><span>지도에서 보고 있는 매물</span><button onClick={() => setViewMode("list")}>목록으로 <ChevronRight size={14} /></button></div>{bottomListings.slice(0, 2).map((listing) => <ListingCard key={`${listing.type}-${listing.id}`} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} compact />)}</div>}
       </main>
     </div>
   );

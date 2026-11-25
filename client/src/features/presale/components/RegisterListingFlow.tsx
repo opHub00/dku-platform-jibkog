@@ -5,6 +5,7 @@ import {
   CircleHelp,
   FileCheck2,
   FileText,
+  LayoutGrid,
   Search,
   ShieldAlert,
   ShieldCheck,
@@ -30,6 +31,10 @@ import type {
   TrustReport,
 } from "../types";
 import { TrustReportView } from "./TrustReportView";
+import { getCatalogComplex, searchCatalogComplexes } from "@/features/catalog/api/catalogApi";
+import { shortAddress } from "@/features/catalog/lib/noticeText";
+import { catalogToComplex, housingTypeLabel, roundArea } from "@/features/catalog/lib/catalogComplex";
+import type { CatalogComplex, CatalogComplexDetail, HousingType } from "@/features/catalog/types";
 import "../presale.css";
 
 type Step = "complex" | "terms" | "documents" | "verify";
@@ -73,12 +78,15 @@ function MoneyField({
   onChange,
   error,
   placeholder,
+  note,
 }: {
   label: string;
   value: string;
   onChange: (digits: string) => void;
   error?: string;
   placeholder?: string;
+  /** 값 아래 덧붙이는 안내(예: 공고 기준 금액) */
+  note?: string;
 }) {
   const id = useId();
   const won = manwonToWon(value);
@@ -103,6 +111,7 @@ function MoneyField({
       ) : (
         won !== null && won > 0 && <p className="ps-hint">{formatWon(won)}</p>
       )}
+      {note && <p className="ps-hint">{note}</p>}
     </div>
   );
 }
@@ -119,7 +128,12 @@ export function RegisterListingFlow({
   const [seller, setSeller] = useState<Seller | null>(null);
 
   const [query, setQuery] = useState("");
-  const [complexId, setComplexId] = useState<string | null>(null);
+  // 1단계: 청약 공고 단지 검색(GET /api/catalog/complexes) → 주택형 선택
+  const [results, setResults] = useState<{ items: CatalogComplex[]; total: number } | null>(null);
+  const [searchFailed, setSearchFailed] = useState(false);
+  const [catalogId, setCatalogId] = useState<string | null>(null);
+  const [catalogDetail, setCatalogDetail] = useState<CatalogComplexDetail | null>(null);
+  const [modelNumber, setModelNumber] = useState<string | null>(null);
 
   const [area, setArea] = useState<number | null>(null);
   const [floor, setFloor] = useState("");
@@ -161,16 +175,53 @@ export function RegisterListingFlow({
     };
   }, []);
 
-  const complex = complexes.find((c) => c.id === complexId) ?? null;
+  useEffect(() => {
+    let active = true;
+    const timer = window.setTimeout(() => {
+      searchCatalogComplexes({ q: query })
+        .then((page) => {
+          if (!active) return;
+          setResults({ items: page.items, total: page.total });
+          setSearchFailed(false);
+        })
+        .catch(() => {
+          if (!active) return;
+          setResults({ items: [], total: 0 });
+          setSearchFailed(true);
+        });
+    }, query.trim() === "" ? 0 : 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [query]);
+
+  const complex = useMemo(
+    () => (catalogDetail && catalogDetail.id === catalogId ? catalogToComplex(catalogDetail, complexes) : null),
+    [catalogDetail, catalogId, complexes],
+  );
+  const housingType = catalogDetail?.housingTypes.find((h) => h.modelNumber === modelNumber) ?? null;
   const restriction = complex ? getResaleRestriction(complex) : null;
 
-  const filteredComplexes = useMemo(() => {
-    const keyword = query.trim().replace(/\s/g, "");
-    if (keyword === "") return complexes;
-    return complexes.filter((c) =>
-      `${c.name}${c.address}`.replace(/\s/g, "").includes(keyword),
-    );
-  }, [complexes, query]);
+  function selectCatalogComplex(id: string) {
+    if (id === catalogId) return;
+    setCatalogId(id);
+    setCatalogDetail(null);
+    setModelNumber(null);
+    getCatalogComplex(id)
+      .then((detail) => setCatalogDetail(detail))
+      .catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : "주택형을 불러오지 못했어요");
+        setCatalogId(null);
+      });
+  }
+
+  /** 주택형을 고르면 공고 기준 공급면적·분양가(최고가)를 채운다. 다음 단계에서 고칠 수 있다 */
+  function selectHousingType(type: HousingType) {
+    setModelNumber(type.modelNumber);
+    setArea(roundArea(type.supplyAreaM2));
+    setSalePrice(String(Math.round(type.maxPriceWon / MAN)));
+  }
 
   // ---------- 2단계 값 검증 ----------
   const sale = manwonToWon(salePrice);
@@ -185,7 +236,12 @@ export function RegisterListingFlow({
       floorNumber === null || floorNumber < 1 || floorNumber > 99
         ? "1~99층 사이로 입력해주세요"
         : undefined,
-    salePrice: sale === null || sale <= 0 ? "분양가를 입력해주세요" : undefined,
+    salePrice:
+      sale === null || sale <= 0
+        ? "분양가를 입력해주세요"
+        : housingType && sale > housingType.maxPriceWon
+          ? `공고 최고가(${formatWon(housingType.maxPriceWon)})보다 클 수 없어요`
+          : undefined,
     premium: prem === null ? "프리미엄을 입력해주세요. 없으면 0이에요" : undefined,
     paidAmount:
       paid === null
@@ -269,6 +325,7 @@ export function RegisterListingFlow({
 
     const input: NewPresaleListingInput = {
       complexId: complex.id,
+      ...(catalogId && modelNumber ? { catalogComplexId: catalogId, housingModelNumber: modelNumber } : {}),
       seller: currentSeller,
       area,
       floor: floorNumber,
@@ -334,7 +391,7 @@ export function RegisterListingFlow({
   // ---------- 이동 ----------
   function goNext() {
     if (step === "complex") {
-      if (!complex || restriction?.restricted) return;
+      if (!complex || !housingType || restriction?.restricted) return;
       if (area !== null && !complex.supplyAreas.includes(area)) setArea(null);
       setStep("terms");
     } else if (step === "terms") {
@@ -370,7 +427,7 @@ export function RegisterListingFlow({
   }
 
   const nextDisabled =
-    (step === "complex" && (!complex || restriction?.restricted === true)) ||
+    (step === "complex" && (!complex || !housingType || restriction?.restricted === true)) ||
     (step === "documents" && !files.salesContract) ||
     (step === "verify" && (!report || registering));
 
@@ -416,18 +473,23 @@ export function RegisterListingFlow({
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>
-            {filteredComplexes.length === 0 ? (
-              <p className="ps-empty">찾는 단지가 없어요. 이름을 다시 확인해주세요</p>
+            {results === null ? (
+              <p className="ps-empty">청약 공고 단지를 찾고 있어요</p>
+            ) : results.items.length === 0 ? (
+              <p className="ps-empty">
+                {searchFailed
+                  ? "단지 목록을 불러오지 못했어요. 잠시 뒤 다시 검색해주세요"
+                  : "찾는 단지가 없어요. 청약홈에 분양 공고가 올라온 단지만 찾을 수 있어요"}
+              </p>
             ) : (
               <div className="alert-list ps-complex-list">
-                {filteredComplexes.map((c) => {
-                  const r = getResaleRestriction(c);
-                  const selected = c.id === complexId;
+                {results.items.map((c) => {
+                  const selected = c.id === catalogId;
                   return (
                     <button
                       key={c.id}
                       className={`alert-row ps-select-row ${selected ? "active" : ""}`}
-                      onClick={() => setComplexId(c.id)}
+                      onClick={() => selectCatalogComplex(c.id)}
                       aria-pressed={selected}
                     >
                       <span className="ai-badge">
@@ -436,14 +498,50 @@ export function RegisterListingFlow({
                       <div>
                         <strong>{c.name}</strong>
                         <p>
-                          {c.address} · 입주 {formatMonth(c.moveInMonth)}
+                          {shortAddress(c)} · 입주 {c.moveInMonth ? formatMonth(c.moveInMonth) : "공고문 확인"}
                         </p>
                       </div>
-                      {r.restricted && <StatusPill tone="sand">전매제한</StatusPill>}
                       {selected && <Check size={17} />}
                     </button>
                   );
                 })}
+              </div>
+            )}
+            {results !== null && results.total > results.items.length && (
+              <p className="ps-hint">{results.total}개 중 {results.items.length}개를 보여드려요. 단지 이름을 더 자세히 적어주세요</p>
+            )}
+            {catalogId && (
+              <div className="ps-complex-note">
+                <SectionHeader eyebrow={catalogDetail?.name ?? "주택형"} title="주택형을 골라주세요" />
+                {catalogDetail === null ? (
+                  <p className="ps-empty">주택형을 불러오고 있어요</p>
+                ) : (
+                  <div className="alert-list ps-complex-list">
+                    {catalogDetail.housingTypes.map((h) => {
+                      const selected = h.modelNumber === modelNumber;
+                      return (
+                        <button
+                          key={h.modelNumber}
+                          className={`alert-row ps-select-row ${selected ? "active" : ""}`}
+                          onClick={() => selectHousingType(h)}
+                          aria-pressed={selected}
+                        >
+                          <span className="ai-badge">
+                            <LayoutGrid size={17} />
+                          </span>
+                          <div>
+                            <strong>{housingTypeLabel(h)}</strong>
+                            <p>
+                              전용 {roundArea(h.exclusiveAreaM2)}㎡ · 공급 {roundArea(h.supplyAreaM2)}㎡ · 최고 {formatWon(h.maxPriceWon)}
+                            </p>
+                          </div>
+                          {selected && <Check size={17} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="ps-hint">면적과 분양가는 청약 공고 기준으로 채워드려요. 다음 단계에서 고칠 수 있어요</p>
               </div>
             )}
             {complex && restriction?.restricted && (
@@ -467,17 +565,31 @@ export function RegisterListingFlow({
               <div className="ps-field">
                 <span className="ps-label">면적</span>
                 <div className="filter-row ps-chip-row">
-                  {complex.supplyAreas.map((a) => (
-                    <button
-                      key={a}
-                      className={`filter-chip ${area === a ? "active" : ""}`}
-                      onClick={() => setArea(a)}
-                    >
-                      {a}㎡
-                    </button>
-                  ))}
+                  {catalogDetail
+                    ? catalogDetail.housingTypes.map((h) => (
+                        <button
+                          key={h.modelNumber}
+                          className={`filter-chip ${h.modelNumber === modelNumber ? "active" : ""}`}
+                          onClick={() => selectHousingType(h)}
+                        >
+                          {housingTypeLabel(h)}
+                        </button>
+                      ))
+                    : complex.supplyAreas.map((a) => (
+                        <button
+                          key={a}
+                          className={`filter-chip ${area === a ? "active" : ""}`}
+                          onClick={() => setArea(a)}
+                        >
+                          {a}㎡
+                        </button>
+                      ))}
                 </div>
-                {showErrors && termErrors.area && <p className="ps-hint ps-error">{termErrors.area}</p>}
+                {showErrors && termErrors.area ? (
+                  <p className="ps-hint ps-error">{termErrors.area}</p>
+                ) : (
+                  housingType && <p className="ps-hint">공고 기준 공급면적 {roundArea(housingType.supplyAreaM2)}㎡ · 주택형을 바꾸면 분양가도 다시 채워요</p>
+                )}
               </div>
               <div className="ps-field">
                 <label className="ps-label" htmlFor={floorId}>
@@ -505,7 +617,8 @@ export function RegisterListingFlow({
                   label="분양가"
                   value={salePrice}
                   onChange={setSalePrice}
-                  error={showErrors ? termErrors.salePrice : undefined}
+                  error={showErrors || (housingType !== null && sale !== null && sale > housingType.maxPriceWon) ? termErrors.salePrice : undefined}
+                  note={housingType ? `공고 기준 최고가 ${formatWon(housingType.maxPriceWon)}. 실제 계약 금액으로 고쳐주세요` : undefined}
                 />
                 <MoneyField
                   label="프리미엄"
