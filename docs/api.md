@@ -5,6 +5,7 @@
 - 주소는 모두 같은 출처(`http://localhost:3000`)의 `/api/...`입니다.
 - 요청·응답 본문은 JSON입니다. **본문이 있는 요청은 `Content-Type: application/json`이 필수**입니다(아니면 415). 다른 사이트에서 폼으로 요청을 위조하는 것(CSRF)을 막는 장치입니다.
 - 금액은 모두 **원 단위 정수**, 시각은 ISO 8601 문자열(UTC)입니다.
+- 청약 공고 카탈로그·지도 핀 API(`/api/catalog/*`, `/api/map/markers`)와 매물 등록 추가 필드(`catalogComplexId`, `housingModelNumber`, `isDemo`)는 [api-catalog.md](./api-catalog.md)에 있습니다.
 
 ## 공통 규칙
 

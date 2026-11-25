@@ -1,4 +1,5 @@
 import type { AiModelInfo } from "./ai/types";
+import type { CatalogListingFields, ListingDemoFlag } from "../catalog/types";
 
 /** 금액은 모두 원 단위 정수다. 화면에 보여줄 때만 lib/format.ts로 변환한다. */
 export type Won = number;
@@ -64,7 +65,7 @@ export type PresaleDocument = {
 /** review: 신뢰 점수가 낮아 검토 대기(목록에 노출 안 함) */
 export type PresaleListingStatus = "selling" | "reserved" | "sold" | "review";
 
-export type PresaleListing = {
+export type PresaleListing = CatalogListingFields & ListingDemoFlag & {
   id: number;
   complexId: string;
   seller: Seller;
@@ -94,7 +95,7 @@ export type PresaleListing = {
 /** 매물 등록 시 입력값. id·상태·찜·등록시각·검증결과는 저장소가 채운다. */
 export type NewPresaleListingInput = Omit<
   PresaleListing,
-  "id" | "status" | "liked" | "createdAt" | "trust" | "isMine"
+  "id" | "status" | "liked" | "createdAt" | "trust" | "isMine" | "isDemo"
 >;
 
 export type TrustItemStatus = "pass" | "warn" | "fail";

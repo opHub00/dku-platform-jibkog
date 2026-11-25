@@ -1,15 +1,17 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { clearSessionCookie, parseCookies, SESSION_COOKIE, sessionCookie } from "../auth";
+import { createFixtureCatalog } from "../catalog/fixture";
+import { parseBounds, parseComplexQuery, parseNoticeQuery } from "../catalog/source";
 import { EventHub } from "../realtime";
 import { createJsonFileStore } from "../store/jsonFileStore";
 import { buildSeedTables } from "../store/seed";
 import type { Store, UserRow } from "../store/types";
-import { ApiError, readJson, sendError, sendJson } from "./http";
+import { ApiError, notFound, readJson, sendError, sendJson } from "./http";
 import * as svc from "./services";
 
 /**
- * 앱 API(/api/auth, /api/complexes, /api/listings, /api/chats, /api/events).
- * 문서: docs/api.md. 저장소는 Store 인터페이스만 쓴다(지금은 JSON 파일).
+ * 앱 API(/api/auth, /api/complexes, /api/listings, /api/chats, /api/events, /api/catalog, /api/map).
+ * 문서: docs/api.md, docs/api-catalog.md. 저장소는 Store 인터페이스만 쓴다(지금은 JSON 파일).
  */
 
 type Ctx = {
@@ -43,6 +45,10 @@ export function createAppApi(options: { dataFile: string; log?: (message: string
   const hub = new EventHub();
   const routes: Route[] = [];
   const route = (method: string, path: string, handler: Handler) => routes.push({ method, ...compile(path), handler });
+
+  // 청약 공고 카탈로그. 지금은 샘플 5개 임시 응답(server/catalog/fixture.ts)
+  const catalog = createFixtureCatalog();
+  const query = (req: IncomingMessage) => new URL(req.url ?? "/", "http://localhost").searchParams;
 
   const notifyChat = (change: svc.ChatChange) =>
     hub.publishTo([change.chat.buyer_id, change.chat.seller_id], { type: "chat.changed", chatId: change.chat.id });
@@ -91,6 +97,22 @@ export function createAppApi(options: { dataFile: string; log?: (message: string
     hub.publishTo([me.id], { type: "listing.changed", listingId });
     sendJson(ctx.res, 200, result);
   });
+
+  // ---------- 청약 카탈로그·지도(docs/api-catalog.md) ----------
+  route("GET", "/api/catalog/complexes", async ({ req, res }) => sendJson(res, 200, await catalog.searchComplexes(parseComplexQuery(query(req)))));
+  // 카탈로그 단지 id는 숫자만이라고 가정하지 않는다
+  routes.push({
+    method: "GET",
+    pattern: /^\/api\/catalog\/complexes\/([A-Za-z0-9_-]{1,64})$/,
+    keys: ["id"],
+    handler: async ({ res, params }) => {
+      const complex = await catalog.getComplex(params.id ?? "");
+      if (!complex) throw notFound("단지");
+      sendJson(res, 200, { complex });
+    },
+  });
+  route("GET", "/api/catalog/notices", async ({ req, res }) => sendJson(res, 200, { notices: await catalog.listNotices(parseNoticeQuery(query(req))) }));
+  route("GET", "/api/map/markers", async ({ req, res }) => sendJson(res, 200, await catalog.mapMarkers(store, parseBounds(query(req)))));
 
   // ---------- 채팅 ----------
   route("GET", "/api/chats", async ({ res, user }) => sendJson(res, 200, { rooms: await svc.listChats(store, svc.requireUser(user).id) }));
@@ -145,7 +167,7 @@ export function createAppApi(options: { dataFile: string; log?: (message: string
     /** connect 미들웨어. /api/ 중 앱 API가 아니면 next()로 넘긴다(/api/ai, /api/news는 기존 플러그인) */
     async middleware(req: IncomingMessage, res: ServerResponse, next: () => void): Promise<void> {
       const url = (req.url ?? "").split("?")[0];
-      if (!/^\/api\/(auth|complexes|listings|chats|events)(\/|$)/.test(url)) {
+      if (!/^\/api\/(auth|complexes|listings|chats|events|catalog|map)(\/|$)/.test(url)) {
         next();
         return;
       }
