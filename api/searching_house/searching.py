@@ -215,13 +215,13 @@ def main():
 
     notices = trades = None
     errors = []
-    document_index = Path(__file__).with_name("document_sources.json")
+    document_index = Path(__file__).with_name("searched_house_pdf_document.json")
     try:
         documents = json.loads(document_index.read_text(encoding="utf-8")) if document_index.exists() else {}
         if not isinstance(documents, dict) or not all(isinstance(items, list) for items in documents.values()):
             raise ValueError
     except (OSError, ValueError):
-        errors.append("document_sources.json에서 공고별 문서 목록을 읽지 못했습니다.")
+        errors.append("searched_house_pdf_document.json에서 공고별 문서 목록을 읽지 못했습니다.")
         documents = {}
     try:
         notices = fetch_notices(
@@ -259,7 +259,7 @@ def main():
         "apartment_sales": trades,
         "errors": errors,
     }
-    output = Path(__file__).with_name("results.json")
+    output = Path(__file__).with_name("searched_house.json")
     output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     mapped = sum(notice["coordinates"] is not None for notice in notices or [])
     model_count = sum(len(notice["housing_types"] or []) for notice in notices or [])

@@ -12,7 +12,17 @@ from urllib.parse import unquote
 from urllib.request import Request, urlopen
 
 
-from fetch_data import APPLYHOME_URL, DATA_GO_KR_SERVICE_KEY, ApiError, fetch, json_response
+API_ROOT = Path(__file__).resolve().parents[1]
+if not __package__:
+    sys.path.insert(0, str(API_ROOT.parent))
+
+from api.searching_house.searching import (
+    APPLYHOME_URL,
+    DATA_GO_KR_SERVICE_KEY,
+    ApiError,
+    fetch,
+    json_response,
+)
 
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
@@ -51,13 +61,13 @@ def parse_args():
     parser.add_argument("--region", default="서울", help="청약홈 공급지역명 (기본 서울)")
     parser.add_argument("--basis", choices=("published", "applications"),
                         help="--month 사용 시 모집공고일 또는 접수 기간 기준 (기본 published)")
-    parser.add_argument("--input", type=Path, help="--month 사용 시 입력 JSON (기본 api/results.json)")
+    parser.add_argument("--input", type=Path, help="--month 사용 시 입력 JSON (기본 api/searching_house/searched_house.json)")
     parser.add_argument("--output", type=Path, default=Path(__file__).with_name("generated_news.json"),
-                        help="뉴스 JSON 저장 경로 (기본 api/generated_news.json)")
+                        help="뉴스 JSON 저장 경로 (기본 api/generating_news/generated_news.json)")
     args = parser.parse_args()
     if not args.month and (args.basis or args.input):
         parser.error("--basis와 --input은 --month와 함께 사용하세요.")
-    default_input = Path(__file__).with_name("results.json")
+    default_input = API_ROOT / "searching_house" / "searched_house.json"
     args.input = args.input or default_input
     if args.output.resolve() in {args.input.resolve(), default_input.resolve()}:
         parser.error("--output에는 청약 조회 결과 JSON과 다른 경로를 지정하세요.")
@@ -287,7 +297,7 @@ def main():
                 data = json.load(stream)
             notices = data.get("notices") if isinstance(data, dict) else None
             if not isinstance(notices, list):
-                raise ValueError("입력 파일에 청약 공고 조회 결과가 없습니다. fetch_data.py를 먼저 실행하세요.")
+                raise ValueError("입력 파일에 청약 공고 조회 결과가 없습니다. api/searching_house/searching.py를 먼저 실행하세요.")
             selected = select_notices(notices, args.region, period["from"], period["to"], args.basis)
             query = data.get("query")
         report = {

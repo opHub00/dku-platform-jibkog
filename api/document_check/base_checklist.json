@@ -1,0 +1,714 @@
+{
+  "source": "https://apply.lh.or.kr/lhapply/apply/noti/an/view.do?bbsSn=9102432473&ccrCnntSysDsCd=02&mi=1079",
+  "scope": "청약 서류 유형별 공통 항목",
+  "required_signers": [],
+  "documents": {
+    "id": {
+      "title": "신분증",
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        }
+      },
+      "aliases": [
+        "주민등록증",
+        "운전면허증",
+        "여권"
+      ]
+    },
+    "resident": {
+      "title": "주민등록표 등본",
+      "fields": {
+        "household": {
+          "label": "세대원 이름",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      },
+      "aliases": [
+        "주민등록표(등본)",
+        "주민등록등본"
+      ]
+    },
+    "privacy": {
+      "title": "개인정보 수집·이용 및 제3자 제공 동의서",
+      "fields": {
+        "consent": {
+          "label": "동의 여부",
+          "check": "equals",
+          "argument": "동의"
+        },
+        "signers": {
+          "label": "서명한 세대원",
+          "check": "signers"
+        }
+      }
+    },
+    "financial": {
+      "title": "금융정보 등 제공 동의서",
+      "fields": {
+        "consent": {
+          "label": "동의 여부",
+          "check": "equals",
+          "argument": "동의"
+        },
+        "signers": {
+          "label": "서명한 세대원",
+          "check": "signers"
+        }
+      },
+      "aliases": [
+        "금융정보등(금융·신용·보험정보) 제공 동의서"
+      ]
+    },
+    "abstract": {
+      "title": "주민등록표 초본",
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      },
+      "aliases": [
+        "주민등록표(초본)",
+        "주민등록초본"
+      ]
+    },
+    "family": {
+      "title": "가족관계증명서",
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "family": {
+          "label": "가족관계 내역",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      }
+    },
+    "marriage": {
+      "title": "혼인관계증명서",
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      }
+    },
+    "immigration": {
+      "title": "출입국에 관한 사실증명",
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      }
+    },
+    "passport_info": {
+      "title": "여권정보증명서",
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "number": {
+          "label": "여권번호",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      }
+    },
+    "asset": {
+      "title": "자산보유사실확인서",
+      "fields": {
+        "name": {
+          "label": "신청자 성명",
+          "check": "nonempty"
+        },
+        "kind": {
+          "label": "자산 종류",
+          "check": "nonempty"
+        },
+        "amount": {
+          "label": "금액",
+          "check": "nonempty"
+        },
+        "signature": {
+          "label": "신청자 서명",
+          "check": "nonempty"
+        }
+      }
+    },
+    "lease": {
+      "title": "임대차계약서",
+      "fields": {
+        "tenant": {
+          "label": "임차인",
+          "check": "nonempty"
+        },
+        "deposit": {
+          "label": "보증금",
+          "check": "nonempty"
+        },
+        "fixed": {
+          "label": "확정일자",
+          "check": "date"
+        }
+      }
+    },
+    "sale": {
+      "title": "분양계약서",
+      "fields": {
+        "buyer": {
+          "label": "계약자",
+          "check": "nonempty"
+        },
+        "property": {
+          "label": "분양 목적물",
+          "check": "nonempty"
+        },
+        "price": {
+          "label": "계약금액",
+          "check": "nonempty"
+        }
+      }
+    },
+    "sale_payment": {
+      "title": "분양대금 납부확인원",
+      "fields": {
+        "buyer": {
+          "label": "계약자",
+          "check": "nonempty"
+        },
+        "amount": {
+          "label": "납부 금액",
+          "check": "nonempty"
+        },
+        "paid": {
+          "label": "납부일",
+          "check": "date"
+        }
+      }
+    },
+    "shares": {
+      "title": "비상장주식 보유 증빙",
+      "fields": {
+        "kind": {
+          "label": "종목",
+          "check": "nonempty"
+        },
+        "count": {
+          "label": "수량",
+          "check": "nonempty"
+        },
+        "value": {
+          "label": "가액",
+          "check": "nonempty"
+        }
+      }
+    },
+    "contribution": {
+      "title": "출자증서",
+      "fields": {
+        "name": {
+          "label": "출자자",
+          "check": "nonempty"
+        },
+        "company": {
+          "label": "출자 기관",
+          "check": "nonempty"
+        },
+        "amount": {
+          "label": "출자금 또는 지분",
+          "check": "nonempty"
+        }
+      }
+    },
+    "employment": {
+      "title": "재직증명서 또는 복무확인서",
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "issuer": {
+          "label": "발급 기관",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      },
+      "aliases": [
+        "재직증명서",
+        "복무확인서"
+      ]
+    },
+    "pregnancy": {
+      "title": "임신진단서",
+      "fields": {
+        "name": {
+          "label": "대상자 성명",
+          "check": "nonempty"
+        },
+        "doctor": {
+          "label": "담당 의사명",
+          "check": "nonempty"
+        },
+        "license": {
+          "label": "의사 면허번호",
+          "check": "nonempty"
+        },
+        "hospital": {
+          "label": "의료기관 등록번호",
+          "check": "nonempty"
+        },
+        "due": {
+          "label": "출산 예정일",
+          "check": "date"
+        },
+        "phone": {
+          "label": "의료기관 연락처",
+          "check": "nonempty"
+        },
+        "seal": {
+          "label": "의료기관 직인 표기",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      }
+    },
+    "birth": {
+      "title": "출생증명서",
+      "fields": {
+        "child": {
+          "label": "출생자 식별",
+          "check": "nonempty"
+        },
+        "birthday": {
+          "label": "출생일",
+          "check": "date"
+        },
+        "parent": {
+          "label": "보호자 성명",
+          "check": "nonempty"
+        },
+        "issuer": {
+          "label": "발급 기관",
+          "check": "nonempty"
+        }
+      }
+    },
+    "adoption": {
+      "title": "입양관계증명서",
+      "fields": {
+        "child": {
+          "label": "입양아 성명",
+          "check": "nonempty"
+        },
+        "parent": {
+          "label": "양부모 성명",
+          "check": "nonempty"
+        },
+        "adopted": {
+          "label": "입양일",
+          "check": "date"
+        }
+      }
+    },
+    "special_adoption": {
+      "title": "친양자입양관계증명서",
+      "fields": {
+        "child": {
+          "label": "입양아 성명",
+          "check": "nonempty"
+        },
+        "parent": {
+          "label": "양부모 성명",
+          "check": "nonempty"
+        },
+        "adopted": {
+          "label": "입양일",
+          "check": "date"
+        }
+      }
+    },
+    "pregnancy_pledge": {
+      "title": "임신증명 및 출산이행 확인각서",
+      "fields": {
+        "name": {
+          "label": "신청자 성명",
+          "check": "nonempty"
+        },
+        "pledge": {
+          "label": "증빙 제출 확약",
+          "check": "equals",
+          "argument": "확약"
+        },
+        "signature": {
+          "label": "신청자 서명",
+          "check": "nonempty"
+        }
+      }
+    },
+    "disability": {
+      "title": "장애인등록증 또는 복지카드",
+      "fields": {
+        "name": {
+          "label": "대상자 성명",
+          "check": "nonempty"
+        },
+        "registration": {
+          "label": "등록 여부",
+          "check": "equals",
+          "argument": "등록"
+        }
+      },
+      "aliases": [
+        "장애인등록증",
+        "복지카드"
+      ]
+    },
+    "senior_age": {
+      "title": "세대원 나이 증빙",
+      "fields": {
+        "name": {
+          "label": "대상자 성명",
+          "check": "nonempty"
+        },
+        "birth": {
+          "label": "생년월일",
+          "check": "date"
+        },
+        "relation": {
+          "label": "신청자와의 관계",
+          "check": "nonempty"
+        }
+      }
+    },
+    "single_parent": {
+      "title": "한부모가족증명서",
+      "fields": {
+        "name": {
+          "label": "대상자 성명",
+          "check": "nonempty"
+        },
+        "qualification": {
+          "label": "증명 내용",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      }
+    },
+    "foreign_registration": {
+      "title": "외국인등록증 또는 외국인등록사실증명",
+      "fields": {
+        "name": {
+          "label": "대상자 성명",
+          "check": "nonempty"
+        },
+        "number": {
+          "label": "외국인등록번호",
+          "check": "nonempty"
+        }
+      },
+      "aliases": [
+        "외국인등록증",
+        "외국인등록사실증명서"
+      ]
+    },
+    "domestic_residence": {
+      "title": "국내거소신고증 또는 국내거소사실증명",
+      "fields": {
+        "name": {
+          "label": "대상자 성명",
+          "check": "nonempty"
+        },
+        "number": {
+          "label": "거소신고번호",
+          "check": "nonempty"
+        }
+      },
+      "aliases": [
+        "국내거소신고증",
+        "국내거소사실증명서"
+      ]
+    },
+    "proxy": {
+      "title": "위임장",
+      "fields": {
+        "person": {
+          "label": "위임인",
+          "check": "nonempty"
+        },
+        "agent": {
+          "label": "대리인",
+          "check": "nonempty"
+        },
+        "scope": {
+          "label": "위임 사항",
+          "check": "nonempty"
+        },
+        "signature": {
+          "label": "위임인 서명 또는 날인",
+          "check": "nonempty"
+        }
+      }
+    },
+    "seal": {
+      "title": "인감증명서",
+      "fields": {
+        "person": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "issuer": {
+          "label": "발급기관",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      }
+    },
+    "signature_certificate": {
+      "title": "본인서명사실확인서",
+      "fields": {
+        "person": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "issuer": {
+          "label": "발급기관",
+          "check": "nonempty"
+        },
+        "issued": {
+          "label": "발급일",
+          "check": "date"
+        }
+      }
+    },
+    "passport": {
+      "title": "여권",
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "number": {
+          "label": "여권번호",
+          "check": "nonempty"
+        }
+      }
+    },
+    "visa": {
+      "title": "비자",
+      "aliases": [
+        "체류 비자",
+        "사증",
+        "비자 발급내역",
+        "사증발급확인서"
+      ],
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "status": {
+          "label": "체류자격",
+          "check": "nonempty"
+        }
+      }
+    },
+    "foreign_registration_certificate": {
+      "title": "외국인등록사실증명서",
+      "aliases": [
+        "외국인등록사실증명",
+        "외국인등록 사실증명"
+      ],
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "number": {
+          "label": "외국인등록번호",
+          "check": "nonempty"
+        }
+      }
+    },
+    "foreign_registration_card": {
+      "title": "외국인등록증",
+      "fields": {
+        "name": {
+          "label": "성명",
+          "check": "nonempty"
+        },
+        "number": {
+          "label": "외국인등록번호",
+          "check": "nonempty"
+        }
+      }
+    },
+    "contract_payment": {
+      "title": "계약금 입금 확인서",
+      "aliases": [
+        "계약금 입금확인증",
+        "입금확인증",
+        "이체확인증"
+      ],
+      "fields": {
+        "payer": {
+          "label": "입금자",
+          "check": "nonempty"
+        },
+        "amount": {
+          "label": "입금 금액",
+          "check": "nonempty"
+        }
+      }
+    }
+  },
+  "required": {},
+  "optional": {
+    "passport_info": {
+      "document": "passport_info",
+      "when": "2020-12-21 이후 발급 여권으로 본인 확인 시"
+    },
+    "asset": {
+      "document": "asset",
+      "when": "공적자료로 확인되지 않는 자산이 있는 경우"
+    },
+    "lease": {
+      "document": "lease",
+      "when": "신고하는 자산이 임차·임대보증금인 경우 자산보유사실확인서에 추가"
+    },
+    "sale": {
+      "document": "sale",
+      "when": "분양권을 신고하는 경우 자산보유사실확인서와 분양대금 납부확인원에 추가"
+    },
+    "sale_payment": {
+      "document": "sale_payment",
+      "when": "분양권을 신고하는 경우 자산보유사실확인서와 분양계약서에 추가"
+    },
+    "shares": {
+      "document": "shares",
+      "when": "비상장주식을 신고하는 경우"
+    },
+    "contribution": {
+      "document": "contribution",
+      "when": "출자금이나 출자지분을 신고하는 경우"
+    },
+    "employment": {
+      "document": "employment",
+      "when": "공고가 인정하는 장기복무 군인 자격으로 신청한 경우"
+    },
+    "pregnancy": {
+      "document": "pregnancy",
+      "when": "태아 인정 또는 임신 관련 완화 기준을 신청한 경우. 예시 발급기간은 완화 기준을 적용한 경우"
+    },
+    "birth": {
+      "document": "birth",
+      "when": "출생신고 전 자녀를 인정받으려는 경우"
+    },
+    "adoption": {
+      "document": "adoption",
+      "when": "입양 자녀 인정 시 제출 가능한 증명서 중 하나"
+    },
+    "special_adoption": {
+      "document": "special_adoption",
+      "when": "입양 자녀 인정 시 제출 가능한 증명서 중 하나"
+    },
+    "pregnancy_pledge": {
+      "document": "pregnancy_pledge",
+      "when": "태아나 입양아 인정에 필요한 추후 증빙 제출 확약"
+    },
+    "disability": {
+      "document": "disability",
+      "when": "장애인 자격으로 최하층 우선배정을 신청한 경우"
+    },
+    "senior_age": {
+      "document": "senior_age",
+      "when": "고령 세대원 자격으로 최하층 우선배정을 신청한 경우. 등본이나 가족관계증명서 등으로 증빙"
+    },
+    "single_parent": {
+      "document": "single_parent",
+      "when": "한부모가족으로 신청했으나 가족관계증명서에 배우자가 확인되는 경우"
+    },
+    "foreign_registration": {
+      "document": "foreign_registration",
+      "when": "해당 세대원이 외국인인 경우 공고가 인정하는 증빙 중 하나"
+    },
+    "domestic_residence": {
+      "document": "domestic_residence",
+      "when": "해당 세대원이 외국인인 경우 공고가 인정하는 증빙 중 하나"
+    },
+    "proxy": {
+      "document": "proxy",
+      "when": "대리 제출 시 위임장과 본인·대리인 신분증 및 해당 증빙 추가"
+    },
+    "seal": {
+      "document": "seal",
+      "when": "대리 제출 시 본인서명사실확인서와 대체 가능"
+    },
+    "signature_certificate": {
+      "document": "signature_certificate",
+      "when": "대리 제출 시 인감증명서와 대체 가능"
+    },
+    "proxy_id": {
+      "document": "id",
+      "when": "대리 제출 시 대리인 신분증"
+    },
+    "spouse_abstract": {
+      "document": "abstract",
+      "when": "공고 당시 세대주와 공고 이후 등본이 분리되는 등 안내문이 요구하는 경우"
+    },
+    "recruitment_household_register": {
+      "document": "resident",
+      "when": "공고 당시 세대주와 공고 이후 등본이 분리되는 등 안내문이 요구하는 경우"
+    }
+  },
+  "slot_titles": {
+    "applicant_id": "신청자 신분증",
+    "applicant_register": "신청자 주민등록표 등본",
+    "spouse_register": "배우자 주민등록표 등본",
+    "applicant_abstract": "신청자 주민등록표 초본",
+    "spouse_abstract": "배우자 주민등록표 초본",
+    "recruitment_household_register": "공고 당시 세대주의 주민등록표 등본",
+    "proxy_id": "대리인 신분증",
+    "applicant_passport": "신청자 여권",
+    "applicant_visa": "신청자 비자"
+  }
+}

@@ -22,10 +22,10 @@
 이 폴더에서 PowerShell을 열고 다음 명령을 실행하세요. Python 3.10 이상과 인터넷 연결이 필요합니다. 별도로 설치할 Python 패키지는 없습니다.
 
 ```powershell
-python fetch_data.py
+python searching.py
 ```
 
-프로그램에 설정된 공공데이터포털 일반 인증키와 카카오 REST API 키를 사용합니다. 명령을 실행하면 바로 조회하고 같은 폴더에 `results.json`을 저장합니다. 결과 파일에는 키를 저장하지 않습니다.
+프로그램에 설정된 공공데이터포털 일반 인증키와 카카오 REST API 키를 사용합니다. 명령을 실행하면 바로 조회하고 같은 폴더에 `searched_house.json`을 저장합니다. 결과 파일에는 키를 저장하지 않습니다.
 
 다른 키를 사용하려면 `DATA_GO_KR_SERVICE_KEY`와 `KAKAO_REST_API_KEY` 환경변수를 설정하세요. 환경변수에 값이 있으면 프로그램의 기본 키보다 먼저 사용합니다.
 
@@ -34,19 +34,9 @@ python fetch_data.py
 기본으로 서울의 최근 365일 APT 공고 첫 페이지와 지난달 서울 서초구 매매 거래 첫 페이지를 각 최대 5건 조회합니다. 공고의 공급지역명과 실거래가의 시군구 코드는 각각 설정합니다.
 
 ```powershell
-python fetch_data.py --region 서울 --since 2026-01-01 --district 11650 --month 202610 --limit 5
-python fetch_data.py --house-manage-no 2026000560 --notice-number 2026000560 --limit 1
-python fetch_data.py --help
-```
-
-## Gemini 최근 청약 뉴스 목업
-
-최근 21일 동안 발표된 청약홈 공고 중 접수 중이거나 접수 예정인 공고를 조회해 `api/generated_news.json`에 뉴스를 저장합니다.
-
-프로젝트 최상위 폴더에서 실행하세요. `--region`을 생략하면 서울을 조회합니다.
-
-```powershell
-python -X utf8 -B .\api\generating_recent_news.py --region 경기
+python searching.py --region 서울 --since 2026-01-01 --district 11650 --month 202610 --limit 5
+python searching.py --house-manage-no 2026000560 --notice-number 2026000560 --limit 1
+python searching.py --help
 ```
 
 ## 지도에 사용하는 데이터
@@ -55,7 +45,7 @@ python -X utf8 -B .\api\generating_recent_news.py --region 경기
 
 실거래 데이터에는 좌표가 없습니다. 실거래도 지도에 표시하려면 `sggCd`를 시군구 이름으로 변환한 뒤 `umdNm`, `jibun`으로 주소를 구성하고 별도로 좌표를 찾아야 합니다. 현재 거래와 청약 공고의 연결 정보도 없습니다.
 
-## results.json 필드
+## searched_house.json 필드
 
 아래 표는 현재 저장된 JSON에 필드가 나타나는 순서를 따릅니다. 중첩 객체와 배열은 부모 항목 바로 다음에 이어집니다. 프로그램은 필드 이름으로 값을 읽습니다.
 
@@ -63,7 +53,7 @@ python -X utf8 -B .\api\generating_recent_news.py --region 경기
 - `null`은 원본에 값이 없거나 해당 데이터를 확보하지 못했다는 뜻입니다. `0`은 API가 제공한 실제 수치이며, `[]`는 조회 결과 또는 등록 목록이 비어 있다는 뜻입니다.
 - 공고 번호, 코드, 우편번호, 모델번호는 앞자리 0을 보존하도록 문자열로 다룹니다. 실거래 필드는 XML에서 읽은 문자열이고, 값이 없는 XML 요소는 빈 문자열로 저장합니다.
 - 한 API 호출이 실패해도 다른 API가 반환한 데이터는 저장됩니다.
-- `documents`는 `document_sources.json`에서 `주택관리번호:공고번호`를 기준으로 붙인 목록입니다.
+- `documents`는 `searched_house_pdf_document.json`에서 `주택관리번호:공고번호`를 기준으로 붙인 목록입니다.
 
 ### 최상위
 
