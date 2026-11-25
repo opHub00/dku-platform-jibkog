@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - 'db/**'
+      - 'server/**'
+      - 'client/src/features/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/database.yml'
 permissions:
   contents: read
@@ -28,3 +32,7 @@ jobs:
           node-version: 24
       - run: npm install --prefix db
       - run: node db/verify.mjs
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: node db/verify-store.mjs

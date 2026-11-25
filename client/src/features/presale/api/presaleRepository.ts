@@ -9,7 +9,9 @@ import type {
   Seller,
   TrustReport,
 } from "../types";
+import type { AiResult, ContractExtraction, DescriptionScreening } from "../ai/types";
 import { currentSeller } from "../data/currentSeller";
+import { createHttpPresaleRepository } from "./httpPresaleRepository";
 
 /** 이 점수 미만이면 등록 후 바로 노출하지 않고 검토 대기로 둔다 */
 export const REVIEW_THRESHOLD_SCORE = 50;
@@ -27,7 +29,7 @@ export interface PresaleRepository {
   /** trust 점수가 REVIEW_THRESHOLD_SCORE 미만이면 status "review"로 저장한다 */
   createListing(
     input: NewPresaleListingInput,
-    options?: { trust?: TrustReport },
+    options?: { trust?: TrustReport; verification?: { contract: AiResult<ContractExtraction>; screening: AiResult<DescriptionScreening> } },
   ): Promise<PresaleListing>;
   /** 지금 로그인한 판매자(더미) */
   getCurrentSeller(): Promise<Seller>;
@@ -224,5 +226,8 @@ export function createLocalStoragePresaleRepository(
 }
 
 /** 앱 전체에서 쓰는 기본 저장소 */
-export const presaleRepository: PresaleRepository =
-  createLocalStoragePresaleRepository();
+/**
+ * 앱 전체에서 쓰는 기본 저장소: 개발 서버 API(HTTP).
+ * 서버 없이 화면만 볼 때는 createLocalStoragePresaleRepository()로 바꿀 수 있다.
+ */
+export const presaleRepository: PresaleRepository = createHttpPresaleRepository();

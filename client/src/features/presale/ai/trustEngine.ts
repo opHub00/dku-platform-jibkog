@@ -180,7 +180,7 @@ function contractItems(
         score: 0,
         maxScore: spec.max,
         status: "fail",
-        description: `계약서는 ${check.read}, 매물 정보는 ${check.expected}로 달라요`,
+        description: spec.key === "contractName" ? "계약자명이 판매자 실명과 달라요" : `계약서는 ${check.read}, 매물 정보는 ${check.expected}로 달라요`,
         source,
       };
     }
@@ -190,9 +190,11 @@ function contractItems(
       score: spec.max,
       maxScore: spec.max,
       status: lowConfidence ? "warn" : "pass",
-      description: lowConfidence
-        ? `${check.read}로 일치하지만 인식 신뢰도가 낮아 다시 확인이 필요해요`
-        : `계약서와 매물 정보가 ${check.read}로 일치해요`,
+      description: spec.key === "contractName"
+        ? lowConfidence ? "계약자명은 일치하지만 인식 신뢰도가 낮아 다시 확인이 필요해요" : "계약자명이 판매자 실명과 일치해요"
+        : lowConfidence
+          ? `${check.read}로 일치하지만 인식 신뢰도가 낮아 다시 확인이 필요해요`
+          : `계약서와 매물 정보가 ${check.read}로 일치해요`,
       source,
     };
   });
@@ -402,6 +404,9 @@ export function evaluateTrust(input: TrustInput): TrustReport {
 
   const usedLive =
     input.screening.mode === "live" || input.contract?.mode === "live";
+  const analyzedBy =
+    (input.contract?.mode === "live" ? input.contract.analyzedBy : undefined) ??
+    (input.screening.mode === "live" ? input.screening.analyzedBy : undefined);
 
   return {
     score,
@@ -411,6 +416,7 @@ export function evaluateTrust(input: TrustInput): TrustReport {
     caps,
     items,
     mode: usedLive ? "live" : "demo",
+    ...(analyzedBy ? { analyzedBy } : {}),
     evaluatedAt: now.toISOString(),
   };
 }

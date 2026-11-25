@@ -22,6 +22,8 @@ import type { Listing } from "@/types";
 import { StatusPill } from "@/components/common/StatusPill";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { TrustReportView } from "@/features/presale/components/TrustReportView";
+import { splitWon, suggestedOffer } from "@/features/chat/lib/format";
+import { useChatRooms } from "@/features/chat/lib/useChat";
 import { currentBuyer } from "@/features/presale/data/currentBuyer";
 import { calcFundsBreakdown } from "@/features/presale/lib/funds";
 import { formatWon, formatRate } from "@/features/presale/lib/format";
@@ -35,7 +37,21 @@ import {
   calcSubscriptionScore,
 } from "@/features/presale/lib/subscriptionScore";
 
-export function ListingDetail({ listing, liked, onBack, onToggleLike, onGoChat }: { listing: Listing; liked: boolean; onBack: () => void; onToggleLike: () => void; onGoChat: () => void }) {
+export function ListingDetail({ listing, liked, isMine = false, onBack, onToggleLike, onGoChat, onSendOffer, onOpenInquiries }: {
+  listing: Listing;
+  liked: boolean;
+  /** 로그인한 내가 판매자인 매물 */
+  isMine?: boolean;
+  onBack: () => void;
+  onToggleLike: () => void;
+  onGoChat: () => void;
+  /** 가격 제안 시트에서 보낸 제안을 대화방에 넣는다 */
+  onSendOffer?: (amount: number) => void;
+  /** 내 매물의 문의 목록 열기 */
+  onOpenInquiries?: () => void;
+}) {
+  const chatRooms = useChatRooms();
+  const inquiryCount = (chatRooms ?? []).filter((room) => room.listingId === listing.id && room.myRole === "seller").length;
   const [showAi, setShowAi] = useState(false);
   const [showDoc, setShowDoc] = useState(false);
   const [showOffer, setShowOffer] = useState(false);
@@ -67,6 +83,8 @@ export function ListingDetail({ listing, liked, onBack, onToggleLike, onGoChat }
         .join(" · ")
     : "";
   const sellerInitial = presale?.seller.realName.slice(0, 2) ?? "판매";
+  const offerAmount = funds ? suggestedOffer(funds.totalRequired) : null;
+  const offerParts = offerAmount ? splitWon(offerAmount) : null;
 
   return (
     <div className="detail-screen">
@@ -114,14 +132,14 @@ export function ListingDetail({ listing, liked, onBack, onToggleLike, onGoChat }
 
       <div className={`detail-actions ${isTrade ? "trade-actions" : ""}`}>
         <button className="action-secondary" onClick={onToggleLike}><Heart size={18} fill={liked ? "currentColor" : "none"} /><span>{liked ? "찜한 매물" : "찜하기"}</span></button>
-        {isTrade && <button className="action-offer" onClick={() => setShowOffer(true)}><Tag size={17} /><span>가격 제안</span></button>}
-        {isTrade && <button className="action-primary" onClick={onGoChat}><MessageCircle size={18} /><span>판매자와 채팅</span></button>}
+        {isTrade && !isMine && <button className="action-offer" onClick={() => setShowOffer(true)}><Tag size={17} /><span>가격 제안</span></button>}
+        {isTrade && <button className="action-primary" onClick={isMine ? onOpenInquiries : onGoChat}><MessageCircle size={18} /><span>{isMine ? `문의 ${inquiryCount}건` : "판매자와 채팅"}</span></button>}
         <button className="action-ai" onClick={() => setShowAi(true)}><Bot size={18} /><span>{isTrade ? "이 매물 분석하기" : "AI한테 물어보기"}</span></button>
         <button className="action-doc" onClick={() => setShowDoc(true)}><FileCheck2 size={18} /><span>계약서류 AI 점검</span></button>
         {isTrade && match && <button className="action-match" onClick={() => setShowMatch(true)}><Handshake size={18} /><span>조건 맞춰보기</span></button>}
       </div>
 
-      {showOffer && <div className="sheet-backdrop" onClick={() => setShowOffer(false)}><div className="bottom-sheet offer-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="offer-badge"><Tag size={18} /></div><div><span className="eyebrow">안전한 가격 제안</span><h2>판매자에게 제안할 금액을 입력하세요.</h2></div><button onClick={() => setShowOffer(false)}><X size={18} /></button></div><div className="offer-price-box"><span>현재 총 매수가</span><strong>{funds ? formatWon(funds.totalRequired) : "확인 중"}</strong><div><span>내 제안가</span><b>24억 <em>6,000만</em></b></div></div><button className="upload-button" onClick={() => { setShowOffer(false); toast("가격 제안을 판매자에게 보냈어요"); }}>가격 제안 보내기</button><div className="sheet-footnote"><ShieldCheck size={14} /> 상대방에게는 제안가와 메시지만 전달돼요.</div></div></div>}
+      {showOffer && <div className="sheet-backdrop" onClick={() => setShowOffer(false)}><div className="bottom-sheet offer-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="offer-badge"><Tag size={18} /></div><div><span className="eyebrow">안전한 가격 제안</span><h2>판매자에게 제안할 금액을 입력하세요.</h2></div><button onClick={() => setShowOffer(false)}><X size={18} /></button></div><div className="offer-price-box"><span>현재 총 매수가</span><strong>{funds ? formatWon(funds.totalRequired) : "확인 중"}</strong><div><span>내 제안가</span><b>{offerParts ? offerParts.head : "확인 중"} <em>{offerParts?.tail}</em></b></div></div><button className="upload-button" onClick={() => { setShowOffer(false); if (offerAmount) onSendOffer?.(offerAmount); }}>가격 제안 보내기</button><div className="sheet-footnote"><ShieldCheck size={14} /> 상대방에게는 제안가와 메시지만 전달돼요.</div></div></div>}
       {showAi && <div className="sheet-backdrop" onClick={() => setShowAi(false)}><div className="bottom-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-heading"><div className="ai-badge"><Bot size={18} /></div><div><span className="eyebrow">집콕 AI 거래 분석</span><h2>{isTrade ? "이 거래, 지금 진행해도 될까요?" : "이 공고, 나에게 맞을까요?"}</h2></div><button onClick={() => setShowAi(false)}><X size={18} /></button></div>
       {isTrade && roi && <div className="roi-calc">
         <div className="roi-field"><span>보유 예정</span><div className="filter-row">{[6, 12, 24].map((months) => <button key={months} className={`filter-chip ${roiMonths === months ? "active" : ""}`} onClick={() => setRoiMonths(months)}>{months}개월</button>)}</div></div>

@@ -15,7 +15,7 @@ import { StatusPill } from "@/components/common/StatusPill";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { extractContract, screenDescription } from "../ai/aiClient";
 import { evaluateTrust } from "../ai/trustEngine";
-import { CONTRACT_MEDIA_TYPES, type AiResult, type ContractExtraction } from "../ai/types";
+import { CONTRACT_MEDIA_TYPES, type AiResult, type ContractExtraction, type DescriptionScreening } from "../ai/types";
 import { presaleRepository, REVIEW_THRESHOLD_SCORE } from "../api/presaleRepository";
 import { calcFundsBreakdown } from "../lib/funds";
 import { formatMonth, formatWon } from "../lib/format";
@@ -138,6 +138,7 @@ export function RegisterListingFlow({
 
   const [tasks, setTasks] = useState<VerifyTaskStatus[]>(VERIFY_TASKS.map(() => "waiting"));
   const [report, setReport] = useState<TrustReport | null>(null);
+  const [verification, setVerification] = useState<{ contract: AiResult<ContractExtraction>; screening: AiResult<DescriptionScreening> } | null>(null);
   const [draft, setDraft] = useState<NewPresaleListingInput | null>(null);
   const [registering, setRegistering] = useState(false);
   const runId = useRef(0);
@@ -238,10 +239,11 @@ export function RegisterListingFlow({
     const currentRun = ++runId.current;
     const isCurrent = () => runId.current === currentRun;
     setReport(null);
+    setVerification(null);
     setDraft(null);
     setTasks(["running", "running", "waiting", "waiting"]);
 
-    const [contract, screening] = await Promise.all([
+    const [contract, screening, currentSeller] = await Promise.all([
       extractContract(contractFile, {
         complexName: complex.name,
         area,
@@ -255,6 +257,7 @@ export function RegisterListingFlow({
         if (isCurrent()) setTask(1, "done");
         return result;
       }),
+      presaleRepository.getCurrentSeller(),
     ]);
     if (!isCurrent()) return;
 
@@ -266,7 +269,7 @@ export function RegisterListingFlow({
 
     const input: NewPresaleListingInput = {
       complexId: complex.id,
-      seller,
+      seller: currentSeller,
       area,
       floor: floorNumber,
       salePrice: sale,
@@ -293,6 +296,7 @@ export function RegisterListingFlow({
     setTask(3, "done");
     setDraft(input);
     setReport(result);
+    setVerification({ contract, screening });
   }
 
   function buildDocuments(contract: AiResult<ContractExtraction>): PresaleDocument[] {
@@ -310,10 +314,10 @@ export function RegisterListingFlow({
   }
 
   async function register() {
-    if (!draft || !report || registering) return;
+    if (!draft || !report || !verification || registering) return;
     setRegistering(true);
     try {
-      const created = await presaleRepository.createListing(draft, { trust: report });
+      const created = await presaleRepository.createListing(draft, { trust: report, verification });
       if (created.status === "review") {
         toast("등록했어요. 검토를 마치면 목록에 보여드릴게요");
       } else {
@@ -359,6 +363,7 @@ export function RegisterListingFlow({
     if (step === "verify") {
       runId.current += 1; // 진행 중인 검증 결과는 버린다
       setReport(null);
+      setVerification(null);
       setDraft(null);
     }
     setStep(STEPS[stepIndex - 1].key);

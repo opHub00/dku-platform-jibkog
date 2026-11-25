@@ -1,0 +1,11 @@
+/*
+ * 로그인(auth) 기능 전용 스타일. 모든 클래스는 au- 접두사.
+ * 입력칸·버튼·안내는 기존 클래스(search-bar, ps-*, segment-control, upload-button, safety-note, sheet-footnote)를 그대로 쓴다.
+ * 색은 index.css의 CSS 변수만 쓴다.
+ */
+.safety-note.au-reason { margin-bottom: 18px; }
+.au-form { margin-top: 6px; }
+.ps-hint.au-error { margin: -4px 0 12px; }
+.upload-button.au-submit { margin-top: 6px; cursor: pointer; }
+.upload-button.au-submit:disabled { opacity: .6; cursor: not-allowed; }
+.au-dev-hint { margin: 14px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; text-align: center; }

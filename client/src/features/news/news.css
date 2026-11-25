@@ -1,0 +1,15 @@
+/*
+ * 맞춤 뉴스(news) 기능 전용 스타일. 모든 클래스는 nw- 접두사.
+ * 목록·필터·안내 문구는 기존 클래스(.news-list, .news-row, .filter-chip, .sheet-footnote)를 그대로 쓴다.
+ * 색은 index.css의 CSS 변수만 쓴다.
+ */
+
+/* 기사 행이 링크(a)라서 기본 밑줄·색을 없앤다 */
+.news-row.nw-link { color: inherit; text-decoration: none; }
+/* 전체 화면에서는 제목을 두 줄까지 보여준다 */
+.news-row.nw-link h3 { display: -webkit-box; white-space: normal; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.news-row .nw-why { margin-top: 5px; color: var(--ink-soft); font-size: 11px; line-height: 1.5; }
+
+.nw-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--muted); font-size: 10px; }
+.nw-empty { margin: 0; padding: 26px 0; color: var(--muted); font-size: 11px; text-align: center; }
+.sheet-footnote.nw-disclaimer { margin-top: 16px; }

@@ -1,0 +1,64 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import pg from 'pg';
+import { createServer } from 'vite';
+import { manage } from './manage.mjs';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+const url = process.env.DATABASE_URL;
+if (!url) throw new Error('Set DATABASE_URL');
+const admin = new pg.Client({ connectionString: url });
+const schema = 'store_test_' + randomUUID().replaceAll('-', '');
+const scoped = new URL(url);
+scoped.searchParams.set('options', '-c search_path=' + schema);
+let vite, store, second;
+await admin.connect();
+try {
+  await admin.query('CREATE SCHEMA ' + schema);
+  await admin.query('SET search_path TO ' + schema);
+  await manage(admin, 'migrate');
+  vite = await createServer({ configFile: false, root, resolve: { alias: { '@': path.join(root,'client/src') } }, server: { middlewareMode: true, hmr: false }, appType: 'custom' });
+  const { createPostgresStore } = await vite.ssrLoadModule('/server/store/postgresStore.ts');
+  const { buildSeedTables, SEED_PASSWORD } = await vite.ssrLoadModule('/server/store/seed.ts');
+  const svc = await vite.ssrLoadModule('/server/api/services.ts');
+  const config = { databaseUrl: scoped.toString(), dbDir: path.join(root,'db') };
+  store = createPostgresStore({ ...config, seed: buildSeedTables });
+  const seller = await svc.login(store, { email:'seller1@jibkog.dev', password:SEED_PASSWORD });
+  const buyer = await svc.signup(store, { email:'buyer@example.test', password:'test-password-123', nickname:'Buyer', realName:'Test Buyer' });
+  assert.ok(await svc.userFromToken(store, buyer.token));
+  const listings = await store.read(tx => tx.listTradeListings());
+  const listing = listings.find(row => row.seller_id === seller.user.id && row.status === 'selling');
+  assert.ok(listing, 'seed seller must have a selling listing');
+  assert.equal(typeof listing.sale_price, 'number');
+  assert.equal(typeof listing.created_at, 'string');
+  await svc.setFavorite(store, buyer.user.id, listing.id, { liked:true });
+  assert.ok((await store.read(tx => tx.listFavoriteListingIds(buyer.user.id))).includes(listing.id));
+  const { room } = await svc.openChat(store, buyer.user.id, { listingId:listing.id });
+  await svc.sendText(store, buyer.user.id, room.id, { text:'Hello' });
+  const offer = await svc.sendOffer(store, buyer.user.id, room.id, { amount:100000000 });
+  const next = await svc.sendOffer(store, buyer.user.id, room.id, { amount:110000000 });
+  assert.equal((await store.read(tx => tx.findMessage(offer.message.id))).offer_status, 'superseded');
+  await svc.respondOffer(store, seller.user.id, room.id, next.message.id, true);
+  await svc.completeChat(store, seller.user.id, room.id);
+  await svc.markRead(store, seller.user.id, room.id);
+  assert.equal((await store.read(tx => tx.findChat(room.id))).deal_status, 'done');
+  assert.ok(await store.read(tx => tx.findRead(room.id,seller.user.id)));
+  await assert.rejects(store.write(async tx => {
+    await tx.removeFavorite({ user_id:buyer.user.id, listing_id:listing.id });
+    throw new Error('rollback');
+  }), /rollback/);
+  second = createPostgresStore(config);
+  assert.ok(await svc.userFromToken(second, buyer.token));
+  assert.ok((await second.read(tx => tx.listFavoriteListingIds(buyer.user.id))).includes(listing.id));
+  await svc.logout(second, buyer.token);
+  assert.equal(await svc.userFromToken(store, buyer.token), null);
+  console.log('PostgreSQL application store integration passed.');
+} finally {
+  await second?.close();
+  await store?.close();
+  await vite?.close();
+  await admin.query('DROP SCHEMA IF EXISTS ' + schema + ' CASCADE');
+  await admin.end();
+}

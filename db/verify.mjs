@@ -15,7 +15,7 @@ try {
     await db.query('SET search_path TO ' + schema);
     await manage(db, 'migrate');
     await manage(db, 'migrate');
-    await db.query("INSERT INTO users(id,nickname) VALUES (10,'existing')");
+    await db.query("INSERT INTO users(id,nickname,email,password_hash) VALUES (10,'existing','existing@example.test','disabled')");
     await assert.rejects(manage(db, 'seed'), /empty database/);
     assert.equal((await db.query('SELECT 1 FROM listings')).rowCount, 0);
     await db.query('DELETE FROM users WHERE id=10');
@@ -23,7 +23,7 @@ try {
     await manage(db, 'seed');
     assert.deepEqual((await listCards(db)).map(card => card.id), [1,2,3,4]);
     assert.equal((await listCards(db))[0].price, '24억 8,000만');
-    assert.equal((await db.query("INSERT INTO users(nickname) VALUES ('next') RETURNING id")).rows[0].id, 4);
+    assert.equal((await db.query("INSERT INTO users(nickname,email,password_hash) VALUES ('next','next@example.test','disabled') RETURNING id")).rows[0].id, 4);
     const reject = sql => assert.rejects(db.query(sql), err => ['23503','23505','23514'].includes(err.code));
     await reject('INSERT INTO favorites VALUES (1,1)');
     await reject('INSERT INTO favorites VALUES (1,100)');

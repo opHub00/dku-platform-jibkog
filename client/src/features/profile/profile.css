@@ -1,0 +1,12 @@
+/*
+ * 내 정보(profile) 기능 전용 스타일. 모든 클래스는 pf- 접두사.
+ * 입력·칩·하단 버튼은 매물 등록 화면의 기존 클래스(search-bar, ps-*, filter-chip, detail-actions)를 그대로 쓰고,
+ * 여기에는 그걸로 안 되는 부분만 둔다. 색은 index.css의 CSS 변수만 쓴다.
+ */
+
+/* 선택지가 많은 칩 줄은 가로 스크롤 대신 여러 줄로 감싼다 */
+.filter-row.pf-chip-wrap { flex-wrap: wrap; overflow: visible; }
+
+.safety-note.pf-privacy-note { margin-bottom: 22px; }
+.search-bar.pf-gap-top { margin-top: 8px; }
+.ps-hint.pf-budget-error { margin-top: -8px; margin-bottom: 14px; }

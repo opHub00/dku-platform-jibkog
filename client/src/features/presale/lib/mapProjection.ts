@@ -47,14 +47,19 @@ export type MapBox = {
   padding: { top: number; right: number; bottom: number; left: number };
 };
 
+/** 마커가 피해야 하는 고정 요소(예: 현재 위치 점). px 좌표 */
+export type MapObstacle = { x: number; y: number; radius: number };
+
 /**
  * 가까운 마커끼리 minDistancePx 이상 떨어지도록 밀어낸다(단순 반복 완화).
+ * obstacles(움직이지 않는 요소)와는 radius 이상 떨어뜨린다.
  * 결과는 box 안쪽(padding 제외)으로 고정한다. 입력 순서대로 % 좌표를 돌려준다.
  */
 export function spreadPositions(
   positions: MapPosition[],
   minDistancePx: number,
   box: MapBox,
+  obstacles: MapObstacle[] = [],
 ): MapPosition[] {
   const { width, height, padding } = box;
   const minX = padding.left;
@@ -90,6 +95,23 @@ export function spreadPositions(
         pts[i].y = clamp(pts[i].y - uy * push, minY, maxY);
         pts[j].x = clamp(pts[j].x + ux * push, minX, maxX);
         pts[j].y = clamp(pts[j].y + uy * push, minY, maxY);
+        moved = true;
+      }
+    }
+    for (const point of pts) {
+      for (const obstacle of obstacles) {
+        let dx = point.x - obstacle.x;
+        let dy = point.y - obstacle.y;
+        let distance = Math.hypot(dx, dy);
+        if (distance >= obstacle.radius) continue;
+        if (distance < 0.01) {
+          // 정확히 겹치면 위쪽으로 비킨다(핀 꼬리가 아래를 가리키므로)
+          dx = 0;
+          dy = -1;
+          distance = 1;
+        }
+        point.x = clamp(obstacle.x + (dx / distance) * obstacle.radius, minX, maxX);
+        point.y = clamp(obstacle.y + (dy / distance) * obstacle.radius, minY, maxY);
         moved = true;
       }
     }

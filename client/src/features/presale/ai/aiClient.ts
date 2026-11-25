@@ -2,7 +2,9 @@ import { demoExtractContract, demoScreenDescription, type ContractHint } from ".
 import {
   CONTRACT_MEDIA_TYPES,
   parseContractExtraction,
+  parseAiModelInfo,
   parseDescriptionScreening,
+  type AiModelInfo,
   type AiResult,
   type ContractExtraction,
   type ContractMediaType,
@@ -16,7 +18,9 @@ import {
 
 const REQUEST_TIMEOUT_MS = 90_000;
 
-async function postJson(path: string, body: unknown): Promise<unknown | null> {
+type ApiSuccess = { result: unknown; analyzedBy?: AiModelInfo };
+
+async function postJson(path: string, body: unknown): Promise<ApiSuccess | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -35,7 +39,7 @@ async function postJson(path: string, body: unknown): Promise<unknown | null> {
       json.ok === true &&
       "result" in json
     ) {
-      return json.result;
+      return { result: json.result, analyzedBy: "analyzedBy" in json ? parseAiModelInfo(json.analyzedBy) : undefined };
     }
     return null;
   } catch {
@@ -70,8 +74,8 @@ export async function extractContract(
   if (isContractMediaType(file.type)) {
     const data = await fileToBase64(file);
     const raw = await postJson("/api/ai/extract-contract", { mediaType: file.type, data });
-    const parsed = raw === null ? null : parseContractExtraction(raw);
-    if (parsed) return { mode: "live", result: parsed };
+    const parsed = raw === null ? null : parseContractExtraction(raw.result);
+    if (raw && parsed) return { mode: "live", result: parsed, analyzedBy: raw.analyzedBy };
   }
   return { mode: "demo", result: demoExtractContract(hint) };
 }
@@ -81,8 +85,8 @@ export async function screenDescription(
 ): Promise<AiResult<DescriptionScreening>> {
   if (description.trim() !== "") {
     const raw = await postJson("/api/ai/screen-description", { description });
-    const parsed = raw === null ? null : parseDescriptionScreening(raw);
-    if (parsed) return { mode: "live", result: parsed };
+    const parsed = raw === null ? null : parseDescriptionScreening(raw.result);
+    if (raw && parsed) return { mode: "live", result: parsed, analyzedBy: raw.analyzedBy };
   }
   return { mode: "demo", result: demoScreenDescription(description) };
 }

@@ -1,0 +1,40 @@
+/*
+ * 분양권 거래 채팅(chat) 기능 전용 스타일. 모든 클래스는 ch- 접두사.
+ * 대화방 화면은 프론트 담당 디자인(pages/ChatRoom.tsx, index.css의 .chatroom-*)을 그대로 쓰고,
+ * 여기에는 그 안에 넣은 거래 기능(가격 제안 카드, 시스템 안내, 외부 연락 경고, 거래 상태 줄)만 둔다.
+ * 색은 index.css의 CSS 변수만 쓴다.
+ */
+
+/* 상단 고정 매물 카드를 누를 수 있을 때 */
+.chatroom-pinned.ch-pinned-link { cursor: pointer; }
+
+/* 거래 상태 + 거래 완료 버튼(상단 카드 아래, 카드와 같은 좌우 여백) */
+.ch-status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ch-status-row.ch-room-status { margin: 10px 16px 0; }
+
+/* 시스템 안내(수락·거절·완료) */
+.ch-system { align-self: center; max-width: 90%; margin: 2px 0; padding: 5px 10px; border-radius: 10px; color: var(--sage-dark); background: var(--sage-pale); font-size: 10px; line-height: 1.45; text-align: center; }
+
+/* 가격 제안 카드(.bubble-row 안에서 말풍선 대신) */
+.ch-offer { min-width: 0; width: 236px; max-width: 100%; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.bubble-row.me .ch-offer { border-color: var(--sage); }
+.ch-offer-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.ch-offer-head .eyebrow { margin: 0; }
+.ch-offer > strong { display: block; margin: 8px 0 4px; color: var(--ink); font-size: 18px; font-weight: 850; letter-spacing: -.05em; }
+.ch-offer > p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.ch-offer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 11px; }
+.ch-offer-actions button { min-height: 36px; border-radius: 10px; font-size: 11px; font-weight: 750; cursor: pointer; }
+
+/* 외부 연락 유도 경고: 입력 바 바로 위에 띄운다(입력 바 구조는 그대로) */
+.ch-warning { display: flex; gap: 10px; padding: 11px 12px; border-radius: 13px; color: var(--sand); background: var(--sand-pale); }
+.ch-warning > svg { flex: 0 0 auto; margin-top: 1px; }
+.ch-warning strong { display: block; font-size: 11px; }
+.ch-warning p { margin: 3px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.ch-warning-actions { display: flex; gap: 14px; margin-top: 7px; }
+.ch-warning.ch-warning-floating { position: absolute; right: 14px; bottom: calc(100% + 8px); left: 14px; box-shadow: 0 6px 16px color-mix(in srgb, var(--ink) 12%, transparent); }
+
+/* 거래가 끝난 방: 입력 비활성 */
+.chatroom-input:disabled, .chatroom-send:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 채팅 탭 빈 목록 */
+.ch-empty { margin: 0; padding: 22px 0; color: var(--muted); font-size: 11px; line-height: 1.5; text-align: center; }
