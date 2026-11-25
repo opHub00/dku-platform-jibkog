@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 export type DotenvKey =
+  | "DATABASE_URL"
+  | "DATABASE_SEED_DEMO"
   | "AI_PROVIDER"
   | "ANTHROPIC_API_KEY"
   | "GEMINI_API_KEY"

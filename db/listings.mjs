@@ -33,7 +33,7 @@ function card(row, today) {
   }
   return {
     id: row.id, type: row.type, title: row.title, location: row.address,
-    district: row.district, image: row.image ?? '/assets/modern-home.jpg',
+    ...(row.district ? { district: row.district } : {}), image: row.image ?? '/assets/modern-home.jpg',
     price: trade ? won(BigInt(row.sale_price) + BigInt(row.premium) + BigInt(row.option_cost)) : noticeStatus(row, today),
     detail: detail.join(' · '), date: row.posted_day === today ? '오늘' : row.posted_day,
     tag: trade ? '분양권 거래' : '청약공고', tagTone: trade ? 'green' : 'navy',
@@ -58,7 +58,7 @@ export async function listCards(db, { scope = 'public', userId = null, now = new
            d.sido || ' ' || d.sigungu AS district, f.user_id IS NOT NULL AS liked
     FROM ${source} AS l
     JOIN complexes AS c ON c.id = l.complex_id
-    JOIN districts AS d ON d.id = c.district_id
+    LEFT JOIN districts AS d ON d.id = c.district_id
     LEFT JOIN favorites AS f ON f.listing_id = l.id AND f.user_id = $1
     ${filter}
     ORDER BY l.created_at DESC, l.id DESC
