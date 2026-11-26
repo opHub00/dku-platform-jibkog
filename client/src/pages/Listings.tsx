@@ -192,7 +192,7 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
 
   return (
     <div className="screen-content">
-      <header className="page-header"><div><p className="eyebrow">내 관심지역</p><h1>{interestHeadline(profile.interestRegions)}</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header>
+      <header className="page-header"><div><p className="eyebrow">내 관심지역</p><h1>{interestHeadline(profile.interestRegions)}</h1></div></header>
       <main className="listing-main">
         <div className="search-bar"><Search size={16} /><span>지역, 단지명으로 찾아보세요</span><button><SlidersHorizontal size={16} /></button></div>
         <div className="filter-row">{filterOptions.map((option) => <button key={option.id} className={`filter-chip ${filter === option.id ? "active" : ""}`} onClick={() => setFilter(option.id)}>{option.label}<span>{option.id === "all" ? allListings.length : allListings.filter((item) => item.type === option.id).length}</span></button>)}</div>
