@@ -81,7 +81,7 @@ img { display: block; max-width: 100%; }
 .alert-list { overflow: hidden; border-top: 1px solid var(--line); }
 .alert-row { display: flex; align-items: flex-start; gap: 10px; padding: 13px 1px; border-bottom: 1px solid var(--line); }
 .alert-dot { width: 7px; height: 7px; margin: 5px 1px 0 2px; border-radius: 50%; flex: 0 0 auto; }
-.green-dot { background: var(--sage); }.sand-dot { background: var(--sand); }
+.green-dot { background: var(--sage); }.sand-dot { background: var(--sand); }.navy-dot { background: var(--navy); }
 .alert-row > div { min-width: 0; flex: 1; }.alert-row strong { display: block; overflow: hidden; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -.035em; }.alert-row p { margin: 4px 0 0; color: var(--ink-soft); font-size: 11px; }.alert-time { color: var(--muted); font-size: 10px; white-space: nowrap; }
 .horizontal-cards { display: flex; gap: 12px; overflow-x: auto; padding: 1px 0 5px; scrollbar-width: none; }.horizontal-cards::-webkit-scrollbar { display: none; }.horizontal-cards .listing-card { width: 190px; min-width: 190px; }
 .chat-fab-wrap { position: fixed; right: max(20px, calc((100vw - 430px) / 2 + 20px)); bottom: 78px; z-index: 8; display: flex; align-items: center; gap: 9px; }

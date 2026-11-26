@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import type { Tab, Listing } from "@/types";
 import { listings } from "@/data/listings";
+import { notifications } from "@/data/notifications";
 import { Logo } from "@/components/common/Logo";
 import { StatusPill } from "@/components/common/StatusPill";
 import { SectionHeader } from "@/components/common/SectionHeader";
@@ -47,8 +48,9 @@ import { TradeChatRoom } from "@/features/chat/components/TradeChatRoom";
 import { ChatRoomView } from "@/pages/ChatRoom";
 import { ChatSessionList } from "@/pages/ChatSessionList";
 
-function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat, onOpenSaved }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void; onOpenSaved: () => void }) {
+function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat, onOpenSaved, onOpenNotifications, onOpenListingAlerts }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void; onOpenSaved: () => void; onOpenNotifications: () => void; onOpenListingAlerts: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
+  const listingAlerts = notifications.filter((item) => item.category === "listing");
   const profile = useProfile();
   const firstInterest = profile.interestRegions[0];
   const firstInterestTradeCount = firstInterest
@@ -68,7 +70,7 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
         </div>
         <div className="topbar-actions">
           <button className="icon-button" aria-label="찜한 매물" onClick={onOpenSaved}><Heart size={19} /></button>
-          <button className="icon-button has-badge" aria-label="알림" onClick={() => toast("새로운 맞춤 알림 2건이 있어요") }><Bell size={19} /><span /></button>
+          <button className="icon-button has-badge" aria-label="알림" onClick={onOpenNotifications}><Bell size={19} /><span /></button>
         </div>
       </header>
 
@@ -97,10 +99,11 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
         </section>
 
         <section>
-          <SectionHeader eyebrow="맞춤 알림" title="놓치면 아쉬운 소식" action="전체보기" onAction={() => toast("맞춤 알림 전체보기를 준비 중이에요")} />
+          <SectionHeader eyebrow="맞춤 알림" title="놓치면 아쉬운 소식" action="전체보기" onAction={onOpenListingAlerts} />
           <div className="alert-list">
-            <div className="alert-row"><span className="alert-dot green-dot" /><div><strong>관심지역에 새 거래가 올라왔어요</strong><p>래미안 원베일리 · 프리미엄 3.2억</p></div><span className="alert-time">10분 전</span></div>
-            <div className="alert-row"><span className="alert-dot sand-dot" /><div><strong>청약 일정이 곧 시작돼요</strong><p>마곡나루역 오피스텔 · 11월 24일</p></div><span className="alert-time">어제</span></div>
+            {listingAlerts.slice(0, 2).map((item) => (
+              <div className="alert-row" key={item.id}><span className={`alert-dot ${item.dot}-dot`} /><div><strong>{item.title}</strong><p>{item.detail}</p></div><span className="alert-time">{item.time}</span></div>
+            ))}
           </div>
         </section>
 
@@ -136,6 +139,30 @@ function SavedListingsView({ listings: savedListings, onOpenListing, onToggleLik
           </div>
         ) : (
           <p className="ch-empty">아직 찜한 매물이 없어요</p>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function NotificationListView({ eyebrow, title, items, onBack }: { eyebrow: string; title: string; items: typeof notifications; onBack: () => void }) {
+  return (
+    <div className="screen-content">
+      <header className="page-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button className="icon-button" onClick={onBack}><ArrowLeft size={20} /></button>
+          <div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1></div>
+        </div>
+      </header>
+      <main className="chat-main">
+        {items.length > 0 ? (
+          <div className="alert-list">
+            {items.map((item) => (
+              <div className="alert-row" key={item.id}><span className={`alert-dot ${item.dot}-dot`} /><div><strong>{item.title}</strong><p>{item.detail}</p></div><span className="alert-time">{item.time}</span></div>
+            ))}
+          </div>
+        ) : (
+          <p className="ch-empty">아직 알림이 없어요</p>
         )}
       </main>
     </div>
@@ -178,6 +205,8 @@ export default function Home() {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [showAiSessions, setShowAiSessions] = useState(false);
   const [showSavedListings, setShowSavedListings] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showListingAlerts, setShowListingAlerts] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showIdentityVerification, setShowIdentityVerification] = useState(false);
@@ -421,6 +450,22 @@ export default function Home() {
     );
   }
 
+  if (showNotifications) {
+    return (
+      <div className="app-frame">
+        <NotificationListView eyebrow="전체 알림" title="알림" items={notifications} onBack={() => setShowNotifications(false)} />
+      </div>
+    );
+  }
+
+  if (showListingAlerts) {
+    return (
+      <div className="app-frame">
+        <NotificationListView eyebrow="맞춤 알림" title="매물 소식" items={notifications.filter((item) => item.category === "listing")} onBack={() => setShowListingAlerts(false)} />
+      </div>
+    );
+  }
+
   if (showAiSessions) {
     return (
       <div className="app-frame">
@@ -434,6 +479,6 @@ export default function Home() {
     );
   }
 
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenSaved={() => setShowSavedListings(true)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <MyListingsView listings={favoriteListings} onOpenListing={openListing} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenSaved={() => setShowSavedListings(true)} onOpenNotifications={() => setShowNotifications(true)} onOpenListingAlerts={() => setShowListingAlerts(true)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <MyListingsView listings={favoriteListings} onOpenListing={openListing} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={changeTab} /></div>;
 }
