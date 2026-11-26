@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowLeft,
   Bell,
   Bot,
   ChevronRight,
   CircleHelp,
   FileCheck2,
+  Heart,
   MapPin,
   Plus,
-  Search,
   ShieldCheck,
   Sparkles,
   UserRound,
@@ -46,7 +47,7 @@ import { TradeChatRoom } from "@/features/chat/components/TradeChatRoom";
 import { ChatRoomView } from "@/pages/ChatRoom";
 import { ChatSessionList } from "@/pages/ChatSessionList";
 
-function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
+function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat, onOpenSaved }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void; onOpenSaved: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
   const profile = useProfile();
   const firstInterest = profile.interestRegions[0];
@@ -66,7 +67,7 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
           <button className="location-button"><MapPin size={13} /> {interestHeadline(profile.interestRegions)} <ChevronRight size={13} /></button>
         </div>
         <div className="topbar-actions">
-          <button className="icon-button" aria-label="검색"><Search size={19} /></button>
+          <button className="icon-button" aria-label="찜한 매물" onClick={onOpenSaved}><Heart size={19} /></button>
           <button className="icon-button has-badge" aria-label="알림" onClick={() => toast("새로운 맞춤 알림 2건이 있어요") }><Bell size={19} /><span /></button>
         </div>
       </header>
@@ -119,6 +120,28 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
   );
 }
 
+function SavedListingsView({ listings: savedListings, onOpenListing, onToggleLike, onBack }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onToggleLike: (listing: Listing) => void; onBack: () => void }) {
+  return (
+    <div className="screen-content">
+      <header className="page-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button className="icon-button" onClick={onBack}><ArrowLeft size={20} /></button>
+          <div><p className="eyebrow">내 공간</p><h1>찜한 매물</h1></div>
+        </div>
+      </header>
+      <main className="favorites-main">
+        {savedListings.length > 0 ? (
+          <div className="favorite-stack">
+            {savedListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => onToggleLike(listing)} />)}
+          </div>
+        ) : (
+          <p className="ch-empty">아직 찜한 매물이 없어요</p>
+        )}
+      </main>
+    </div>
+  );
+}
+
 function ChatView({ listingFilter, onOpenRoom, onLogin, onOpenSessions }: { listingFilter: { id: number; title: string } | null; onOpenRoom: (roomId: number) => void; onLogin: () => void; onOpenSessions: () => void }) {
   const { user } = useAuth();
   const allRooms = useChatRooms();
@@ -156,6 +179,7 @@ export default function Home() {
   const aiSessions = useAiSessions();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [showAiSessions, setShowAiSessions] = useState(false);
+  const [showSavedListings, setShowSavedListings] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showIdentityVerification, setShowIdentityVerification] = useState(false);
@@ -168,6 +192,8 @@ export default function Home() {
   const [homeListings, setHomeListings] = useState<Listing[]>(noticeListings);
   const [postedListings, setPostedListings] = useState<Listing[]>([]);
   const [likedIds, setLikedIds] = useState<number[]>(noticeListings.filter((listing) => listing.liked).map((listing) => listing.id));
+  const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
+  const savedListings = favoriteListings.filter((listing) => listing.liked);
 
   useEffect(() => {
     let active = true;
@@ -384,6 +410,19 @@ export default function Home() {
     );
   }
 
+  if (showSavedListings) {
+    return (
+      <div className="app-frame">
+        <SavedListingsView
+          listings={savedListings}
+          onOpenListing={openListing}
+          onToggleLike={toggleListingLike}
+          onBack={() => setShowSavedListings(false)}
+        />
+      </div>
+    );
+  }
+
   if (showAiSessions) {
     return (
       <div className="app-frame">
@@ -397,7 +436,6 @@ export default function Home() {
     );
   }
 
-  const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenSaved={() => setShowSavedListings(true)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={changeTab} /></div>;
 }
