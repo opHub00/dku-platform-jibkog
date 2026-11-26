@@ -28,9 +28,21 @@ import { presaleRepository } from "@/features/presale/api/presaleRepository";
 import { toListing } from "@/features/presale/lib/toListing";
 import { RegisterListingFlow } from "@/features/presale/components/RegisterListingFlow";
 import type { PresaleListing } from "@/features/presale/types";
+import { ChatRoomView } from "@/pages/ChatRoom";
+import { ChatSessionList } from "@/pages/ChatSessionList";
+import { chatThreads } from "@/features/chat/data/threads";
+import type { ChatThread } from "@/features/chat/types";
+
+/** 데모용 AI 상담 고정 답장. */
+const AI_DEMO_REPLY = "네, 확인했어요. 관련 정보를 조금 더 찾아서 알려드릴게요.";
 
 function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
+  const [showChatTeaser, setShowChatTeaser] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setShowChatTeaser(false), 3500);
+    return () => clearTimeout(timer);
+  }, []);
   return (
     <div className="screen-content">
       <header className="topbar">
@@ -84,15 +96,22 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
           </div>
         </section>
 
-        <button className="chat-fab" onClick={onGoChat}><Bot size={17} /><span>AI 상담</span></button>
+        <div className="chat-fab-wrap">
+          {showChatTeaser && <div className="chat-fab-teaser">궁금한 점, AI한테 물어보세요</div>}
+          <button className="chat-fab" onClick={onGoChat} aria-label="AI 상담"><Bot size={19} /></button>
+        </div>
       </main>
     </div>
   );
 }
 
-function ChatView({ listings: chatListings, onOpenListing }: { listings: Listing[]; onOpenListing: (listing: Listing) => void }) {
+function ChatView({ listings: chatListings, sellerThreads, onOpenSessions, onOpenSellerThread }: { listings: Listing[]; sellerThreads: ChatThread[]; onOpenSessions: () => void; onOpenSellerThread: (listing: Listing) => void }) {
   const tradeListings = chatListings.filter((listing) => listing.type === "trade");
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div><button className="icon-button"><Search size={19} /></button></header><main className="chat-main"><button className="ai-thread" onClick={() => toast("AI 상담 스레드를 열었어요")}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>분양권 거래</span><span>{tradeListings.length}개</span></div><div className="chat-list">{tradeListings.slice(0, 2).map((listing, index) => <button key={listing.id} className="chat-row" onClick={() => onOpenListing(listing)}><div className="thread-avatar seller-avatar">{listing.presale?.seller.realName.slice(0, 2) ?? "판매"}</div><div className="thread-copy"><div><strong>{listing.title} · 판매자</strong><StatusPill tone={index === 0 ? "green" : "navy"}>{index === 0 ? "진행중" : "완료"}</StatusPill></div><p>{index === 0 ? "안녕하세요. 문의하신 동·호수 확인했어요." : "계약서류 점검 결과를 확인해보세요."}</p></div><div className="chat-meta"><span>{index === 0 ? "10:42" : "어제"}</span>{index === 0 && <b>2</b>}</div></button>)}</div><div className="chat-tip"><CircleHelp size={17} /><div><strong>거래 채팅은 안심번호로 보호돼요</strong><p>상대방과 주고받은 서류는 계약서류 점검 이력에 저장됩니다.</p></div></div></main></div>;
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div><button className="icon-button"><Search size={19} /></button></header><main className="chat-main"><button className="ai-thread" onClick={onOpenSessions}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>분양권 거래</span><span>{tradeListings.length}개</span></div><div className="chat-list">{tradeListings.map((listing) => {
+    const thread = sellerThreads.find((candidate) => candidate.listingTitle === listing.title);
+    const lastMessage = thread?.messages[thread.messages.length - 1];
+    return <button key={listing.id} className="chat-row" onClick={() => onOpenSellerThread(listing)}><div className="thread-avatar seller-avatar">{listing.presale?.seller.realName.slice(0, 2) ?? "판매"}</div><div className="thread-copy"><div><strong>{listing.title} · 판매자</strong><StatusPill tone={thread ? "green" : "navy"}>{thread ? "대화중" : "새 대화"}</StatusPill></div><p>{lastMessage?.text ?? "아직 대화를 시작하지 않았어요"}</p></div><div className="chat-meta"><span>{lastMessage?.time ?? ""}</span></div></button>;
+  })}</div><div className="chat-tip"><CircleHelp size={17} /><div><strong>거래 채팅은 안심번호로 보호돼요</strong><p>상대방과 주고받은 서류는 계약서류 점검 이력에 저장됩니다.</p></div></div></main></div>;
 }
 
 function FavoritesView({ listings: favoriteListings, onOpenListing, onToggleLike, onOpenRegister }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onToggleLike: (listing: Listing) => void; onOpenRegister: () => void }) {
@@ -116,6 +135,9 @@ function MyView() {
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [threads, setThreads] = useState<ChatThread[]>(chatThreads);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [showAiSessions, setShowAiSessions] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const noticeListings = listings.filter((listing) => listing.type === "notice");
   const [homeListings, setHomeListings] = useState<Listing[]>(noticeListings);
@@ -181,7 +203,55 @@ export default function Home() {
   const toggleLike = () => {
     if (selectedListing) toggleListingLike(selectedListing);
   };
-  const goChat = () => { setSelectedListing(null); setActiveTab("chat"); };
+  const goChat = () => { setSelectedListing(null); setSelectedThreadId(threads.find((thread) => thread.kind === "ai")?.id ?? null); };
+  const openAiSessions = () => setShowAiSessions(true);
+  const openSellerThread = (listing: Listing) => {
+    setSelectedListing(null);
+    const existing = threads.find((thread) => thread.kind === "seller" && thread.listingTitle === listing.title);
+    if (existing) {
+      setSelectedThreadId(existing.id);
+      return;
+    }
+    const sellerName = listing.presale?.seller.realName ?? "판매자";
+    const created: ChatThread = {
+      id: `seller-${listing.id}`,
+      kind: "seller",
+      name: "판매자",
+      subtitle: "새 대화",
+      listingTitle: listing.title,
+      listingPrice: listing.price,
+      listingImage: listing.image,
+      messages: [{ id: "1", sender: "other", text: `안녕하세요, ${sellerName}입니다. 궁금하신 점 편하게 물어보세요.`, time: "방금 전" }],
+    };
+    setThreads((prev) => [...prev, created]);
+    setSelectedThreadId(created.id);
+  };
+  const sendThreadMessage = (threadId: string, text: string) => {
+    const thread = threads.find((item) => item.id === threadId);
+    setThreads((prev) => prev.map((item) => item.id === threadId
+      ? { ...item, messages: [...item.messages, { id: `local-${item.messages.length}`, sender: "me" as const, text, time: "방금 전" }] }
+      : item));
+    if (thread?.kind === "ai") {
+      setTimeout(() => {
+        setThreads((prev) => prev.map((item) => item.id === threadId
+          ? { ...item, messages: [...item.messages, { id: `local-${item.messages.length}`, sender: "other" as const, text: AI_DEMO_REPLY, time: "방금 전" }] }
+          : item));
+      }, 700);
+    }
+  };
+  const startNewAiSession = () => {
+    const id = `ai-${Date.now()}`;
+    const session: ChatThread = {
+      id,
+      kind: "ai",
+      name: "새로운 질문",
+      subtitle: "방금 전",
+      messages: [{ id: "1", sender: "other", text: "안녕하세요! 무엇을 도와드릴까요?", time: "방금 전" }],
+    };
+    setThreads((prev) => [session, ...prev]);
+    setShowAiSessions(false);
+    setSelectedThreadId(id);
+  };
   const goListings = () => { setSelectedListing(null); setActiveTab("listings"); };
   const openRegister = () => setShowRegister(true);
   const handleRegistered = async (created: PresaleListing) => {
@@ -205,10 +275,36 @@ export default function Home() {
 
   if (selectedListing) {
     const currentListing = { ...selectedListing, liked: likedIds.includes(selectedListing.id) };
-    return <div className="app-frame"><ListingDetail listing={currentListing} liked={currentListing.liked ?? false} onBack={() => setSelectedListing(null)} onToggleLike={toggleLike} onGoChat={goChat} /></div>;
+    return <div className="app-frame"><ListingDetail listing={currentListing} liked={currentListing.liked ?? false} onBack={() => setSelectedListing(null)} onToggleLike={toggleLike} onGoChat={() => openSellerThread(currentListing)} /></div>;
+  }
+
+  const activeThread = selectedThreadId ? threads.find((thread) => thread.id === selectedThreadId) ?? null : null;
+  if (activeThread) {
+    return (
+      <div className="app-frame">
+        <ChatRoomView
+          thread={activeThread}
+          onBack={() => setSelectedThreadId(null)}
+          onSend={(text) => sendThreadMessage(activeThread.id, text)}
+        />
+      </div>
+    );
+  }
+
+  if (showAiSessions) {
+    return (
+      <div className="app-frame">
+        <ChatSessionList
+          sessions={threads.filter((thread) => thread.kind === "ai")}
+          onOpenSession={(session) => { setShowAiSessions(false); setSelectedThreadId(session.id); }}
+          onNewSession={startNewAiSession}
+          onBack={() => setShowAiSessions(false)}
+        />
+      </div>
+    );
   }
 
   const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listings={homeListings} onOpenListing={openListing} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} /> : <MyView />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listings={homeListings} sellerThreads={threads.filter((thread) => thread.kind === "seller")} onOpenSessions={openAiSessions} onOpenSellerThread={openSellerThread} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} /> : <MyView />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={setActiveTab} /></div>;
 }
