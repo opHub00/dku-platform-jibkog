@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import type { Tab, Listing } from "@/types";
 import { listings } from "@/data/listings";
-import { notifications } from "@/data/notifications";
+import { notifications, type NotificationCategory } from "@/data/notifications";
 import { Logo } from "@/components/common/Logo";
 import { StatusPill } from "@/components/common/StatusPill";
 import { SectionHeader } from "@/components/common/SectionHeader";
@@ -48,7 +48,7 @@ import { TradeChatRoom } from "@/features/chat/components/TradeChatRoom";
 import { ChatRoomView } from "@/pages/ChatRoom";
 import { ChatSessionList } from "@/pages/ChatSessionList";
 
-function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat, onOpenSaved, onOpenNotifications, onOpenListingAlerts }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void; onOpenSaved: () => void; onOpenNotifications: () => void; onOpenListingAlerts: () => void }) {
+function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat, onOpenSaved, onOpenNotifications }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void; onOpenSaved: () => void; onOpenNotifications: (tab: NotificationCategory) => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
   const listingAlerts = notifications.filter((item) => item.category === "listing");
   const profile = useProfile();
@@ -70,7 +70,7 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
         </div>
         <div className="topbar-actions">
           <button className="icon-button" aria-label="찜한 매물" onClick={onOpenSaved}><Heart size={19} /></button>
-          <button className="icon-button has-badge" aria-label="알림" onClick={onOpenNotifications}><Bell size={19} /><span /></button>
+          <button className="icon-button has-badge" aria-label="알림" onClick={() => onOpenNotifications("listing")}><Bell size={19} /><span /></button>
         </div>
       </header>
 
@@ -99,7 +99,7 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
         </section>
 
         <section>
-          <SectionHeader eyebrow="맞춤 알림" title="놓치면 아쉬운 소식" action="전체보기" onAction={onOpenListingAlerts} />
+          <SectionHeader eyebrow="맞춤 알림" title="놓치면 아쉬운 소식" action="전체보기" onAction={() => onOpenNotifications("listing")} />
           <div className="alert-list">
             {listingAlerts.slice(0, 2).map((item) => (
               <div className="alert-row" key={item.id}><span className={`alert-dot ${item.dot}-dot`} /><div><strong>{item.title}</strong><p>{item.detail}</p></div><span className="alert-time">{item.time}</span></div>
@@ -145,16 +145,24 @@ function SavedListingsView({ listings: savedListings, onOpenListing, onToggleLik
   );
 }
 
-function NotificationListView({ eyebrow, title, items, onBack }: { eyebrow: string; title: string; items: typeof notifications; onBack: () => void }) {
+function NotificationListView({ initialTab, onBack }: { initialTab: NotificationCategory; onBack: () => void }) {
+  const [tab, setTab] = useState<NotificationCategory>(initialTab);
+  const listingAlerts = notifications.filter((item) => item.category === "listing");
+  const systemAlerts = notifications.filter((item) => item.category === "system");
+  const items = tab === "listing" ? listingAlerts : systemAlerts;
   return (
     <div className="screen-content">
       <header className="page-header">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button className="icon-button" onClick={onBack}><ArrowLeft size={20} /></button>
-          <div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1></div>
+          <div><p className="eyebrow">내 소식</p><h1>알림</h1></div>
         </div>
       </header>
       <main className="chat-main">
+        <div className="segment-control">
+          <button className={tab === "listing" ? "active" : ""} onClick={() => setTab("listing")}>매물 소식 <span>{listingAlerts.length}</span></button>
+          <button className={tab === "system" ? "active" : ""} onClick={() => setTab("system")}>시스템 공지 <span>{systemAlerts.length}</span></button>
+        </div>
         {items.length > 0 ? (
           <div className="alert-list">
             {items.map((item) => (
@@ -205,8 +213,7 @@ export default function Home() {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [showAiSessions, setShowAiSessions] = useState(false);
   const [showSavedListings, setShowSavedListings] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showListingAlerts, setShowListingAlerts] = useState(false);
+  const [notificationsTab, setNotificationsTab] = useState<NotificationCategory | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showIdentityVerification, setShowIdentityVerification] = useState(false);
@@ -450,18 +457,10 @@ export default function Home() {
     );
   }
 
-  if (showNotifications) {
+  if (notificationsTab) {
     return (
       <div className="app-frame">
-        <NotificationListView eyebrow="전체 알림" title="알림" items={notifications} onBack={() => setShowNotifications(false)} />
-      </div>
-    );
-  }
-
-  if (showListingAlerts) {
-    return (
-      <div className="app-frame">
-        <NotificationListView eyebrow="맞춤 알림" title="매물 소식" items={notifications.filter((item) => item.category === "listing")} onBack={() => setShowListingAlerts(false)} />
+        <NotificationListView initialTab={notificationsTab} onBack={() => setNotificationsTab(null)} />
       </div>
     );
   }
@@ -479,6 +478,6 @@ export default function Home() {
     );
   }
 
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenSaved={() => setShowSavedListings(true)} onOpenNotifications={() => setShowNotifications(true)} onOpenListingAlerts={() => setShowListingAlerts(true)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <MyListingsView listings={favoriteListings} onOpenListing={openListing} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenSaved={() => setShowSavedListings(true)} onOpenNotifications={(tab) => setNotificationsTab(tab)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <MyListingsView listings={favoriteListings} onOpenListing={openListing} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={changeTab} /></div>;
 }
