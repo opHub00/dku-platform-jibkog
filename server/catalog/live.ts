@@ -71,7 +71,7 @@ export function createLiveCatalog(options: {
       const geocoder = createGeocoder({ restApiKey: keys.kakao, cache: cached?.geocodes, fetchImpl: options.fetchImpl, minIntervalMs: options.minIntervalMs });
       for (let i = 0; i < notices.length; i++) {
         const notice = notices[i];
-        try { notice.coordinates = await geocoder.lookup(notice.address); }
+        try { notice.coordinates = await geocoder.lookup(notice.address, notice.title); }
         catch (error) {
           log(`카카오 좌표 조회 실패 (${i + 1}/${notices.length}): ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
           if (error instanceof Error && /HTTP (401|403|429)|상한/.test(error.message)) throw error;

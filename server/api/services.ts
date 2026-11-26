@@ -206,7 +206,8 @@ async function toChatRoom(tx: StoreTx, chat: TradeChatRow, userId: number): Prom
   return {
     id: chat.id,
     listingId: chat.listing_id,
-    listingTitle: listing?.title ?? "삭제된 매물",
+    // 예전에 저장된 공고 면적 제목("…109.7007㎡")도 소수 둘째 자리까지만 보여준다
+    listingTitle: listing ? listing.title.replace(/(\d+\.\d{1,2})\d*㎡/,(_, area: string) => `${Number(area)}㎡`) : "삭제된 매물",
     myRole: role,
     counterpart: { id: otherId, nickname: other?.nickname ?? "알 수 없음" },
     status: chat.deal_status,

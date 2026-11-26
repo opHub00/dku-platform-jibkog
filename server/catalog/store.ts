@@ -82,7 +82,7 @@ export async function syncCatalogExamples(store: Store, details: CatalogComplexD
       });
       const row = await tx.insertListing({
         type: "trade", complex_id: complexId, catalog_complex_id: detail.id, housing_model_number: type.modelNumber,
-        title: `${detail.name} ${type.supplyAreaM2}㎡`, description, created_at: createdAt, urgent: false,
+        title: `${detail.name} ${Math.round(type.supplyAreaM2 * 100) / 100}㎡`, description, created_at: createdAt, urgent: false,
         seller_id: seller.id, status: trust.score < 50 ? "review" : "selling", area_m2: type.supplyAreaM2,
         floor: listing.floor, sale_price: type.maxPriceWon, premium, option_cost: 0, paid_amount: paidAmount,
         is_demo: true,

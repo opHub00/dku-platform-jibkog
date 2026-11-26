@@ -99,3 +99,28 @@ export function spreadPins(markers: MapMarker[], toPixel: ToPixel, minDistance =
   }
   return new Map(markers.map((m, i) => [m.key, { dx: pts[i].x - origin[i].x, dy: pts[i].y - origin[i].y }]));
 }
+
+/** 그림 지도(카카오 지도 대체 화면)에서 핀이 많을 때 묶을 지역 원 */
+export type AreaBubble = { key: string; listingCount: number; center: { lat: number; lng: number } };
+
+/**
+ * 시군구("서울 영등포구")별로 묶고, level이 "auto"인데 시군구가 maxGroups보다 많으면 시·도("서울")별로 묶는다.
+ * 그림 지도는 확대·축소가 없어서 지역 원 → 지역 필터 → 핀 순서로 들어간다.
+ */
+export function groupByArea(
+  items: { district?: string; lat: number; lng: number }[],
+  level: "auto" | "district",
+  maxGroups = 8,
+): AreaBubble[] {
+  const build = (keyOf: (district: string) => string) => {
+    const groups = new Map<string, { lat: number; lng: number; count: number }>();
+    for (const item of items) {
+      const key = keyOf(item.district ?? "기타");
+      const sum = groups.get(key) ?? { lat: 0, lng: 0, count: 0 };
+      groups.set(key, { lat: sum.lat + item.lat, lng: sum.lng + item.lng, count: sum.count + 1 });
+    }
+    return [...groups.entries()].map(([key, s]) => ({ key, listingCount: s.count, center: { lat: s.lat / s.count, lng: s.lng / s.count } }));
+  };
+  const districts = build((district) => district);
+  return level === "auto" && districts.length > maxGroups ? build((district) => district.split(" ")[0]) : districts;
+}
