@@ -205,7 +205,7 @@ function MyView({ onOpenProfile, onLogin, onVerifyIdentity }: { onOpenProfile: (
     { icon: <FileCheck2 size={18} />, label: "계약서류 점검 이력", detail: "최근 점검 2건" },
     { icon: <WalletCards size={18} />, label: "멤버십 관리", detail: "집콕 프리미엄 이용 중" },
   ];
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 정보</p><h1>MY</h1></div></header><main className="my-main"><div className="profile-card"><div className="profile-top"><div className="profile-avatar">{shortName(profile.name)}</div><div><h2>{profile.name}님</h2><p>가입일 2026. 04. 18</p></div></div><div className="profile-divider" /><div className="profile-stats"><div><span>청약 가점</span><strong>62점</strong></div><div><span>관심지역</span><strong>{profile.interestRegions.length}곳</strong></div><div><span>찜한 매물</span><strong>{likedPresaleCount}건</strong></div></div></div><div className="my-section"><SectionHeader eyebrow="관리" title="내 설정" /><div className="my-menu">{menuItems.map((item) => <button key={item.label} className="my-menu-row" onClick={item.action ?? (item.label === "프로필 · 관심지역 설정" ? onOpenProfile : () => toast(`${item.label} 화면을 준비 중이에요`))}><div className="my-menu-icon">{item.icon}</div><div><strong>{item.label}</strong><span>{item.detail}</span></div><ChevronRight size={16} /></button>)}</div></div><div className="membership-card"><div className="membership-icon"><Sparkles size={18} /></div><div><span className="eyebrow">집콕 프리미엄</span><strong>계약서류 AI 점검을 무제한으로</strong><p>다음 결제일 2026. 12. 18</p></div><button onClick={() => toast("멤버십 관리 화면을 준비 중이에요")}><ChevronRight size={16} /></button></div><div className="my-footer"><span>버전 1.0.0</span><button>이용약관</button><button>개인정보처리방침</button>{user ? <button onClick={() => void logout().then(() => toast("로그아웃했어요"))}>로그아웃</button> : <button onClick={onLogin}>로그인</button>}</div></main></div>;
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 정보</p><h1>MY</h1></div></header><main className="my-main"><div className="profile-card"><div className="profile-top"><div className="profile-avatar">{shortName(profile.name)}</div><div><h2>{profile.name}님</h2><p>가입일 2026. 04. 18</p></div></div><div className="profile-divider" /><div className="profile-stats"><div><span>청약 가점</span><strong>62점</strong></div><div><span>관심지역</span><strong>{profile.interestRegions.length}곳</strong></div><div><span>찜한 매물</span><strong>{likedPresaleCount}건</strong></div></div></div><div className="my-section"><SectionHeader eyebrow="관리" title="내 설정" /><div className="my-menu">{menuItems.map((item) => <button key={item.label} className="my-menu-row" onClick={item.action ?? (item.label === "프로필 · 관심지역 설정" ? onOpenProfile : () => toast(`${item.label} 화면을 준비 중이에요`))}><div className="my-menu-icon">{item.icon}</div><div><strong>{item.label}</strong><span>{item.detail}</span></div><ChevronRight size={16} /></button>)}</div></div><div className="membership-card"><div className="membership-icon"><Sparkles size={18} /></div><div><span className="eyebrow">집콕 프리미엄</span><strong>계약서류 AI 점검을 무제한으로</strong><p>다음 결제일 2026. 12. 18</p></div><button onClick={() => toast("멤버십 관리 화면을 준비 중이에요")}><ChevronRight size={16} /></button></div><div className="my-footer"><span>버전 1.0.0</span><button onClick={() => toast("이용약관 화면을 준비 중이에요")}>이용약관</button><button onClick={() => toast("개인정보처리방침 화면을 준비 중이에요")}>개인정보처리방침</button>{user ? <button onClick={() => void logout().then(() => toast("로그아웃했어요"))}>로그아웃</button> : <button onClick={onLogin}>로그인</button>}</div></main></div>;
 }
 
 export default function Home() {
@@ -214,6 +214,8 @@ export default function Home() {
   const aiSessions = useAiSessions();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [showAiSessions, setShowAiSessions] = useState(false);
+  /** activeThread를 어디서 열었는지. "sessions"면 뒤로가기 때 대화 목록으로 돌아간다 */
+  const [threadOrigin, setThreadOrigin] = useState<"sessions" | null>(null);
   const [showSavedListings, setShowSavedListings] = useState(false);
   const [notificationsView, setNotificationsView] = useState<{ tab: NotificationCategory; showTabs: boolean } | null>(null);
   const [showRegister, setShowRegister] = useState(false);
@@ -299,11 +301,13 @@ export default function Home() {
     if (selectedListing) toggleListingLike(selectedListing);
   };
   // AI 상담 버튼: 가장 최근 AI 대화를 연다(프론트 담당 동작)
-  const goChat = () => { setSelectedListing(null); setSelectedThreadId(aiSessions[0]?.id ?? null); };
+  const goChat = () => { setSelectedListing(null); setThreadOrigin(null); setSelectedThreadId(aiSessions[0]?.id ?? null); };
   const openAiSessions = () => setShowAiSessions(true);
+  const openAiSession = (sessionId: string) => { setShowAiSessions(false); setThreadOrigin("sessions"); setSelectedThreadId(sessionId); };
   const startNewAiSession = () => {
     const session = aiChatRepository.startSession();
     setShowAiSessions(false);
+    setThreadOrigin("sessions");
     setSelectedThreadId(session.id);
   };
   const changeTab = (tab: Tab) => { setChatFilter(null); setActiveTab(tab); };
@@ -439,7 +443,13 @@ export default function Home() {
       <div className="app-frame">
         <ChatRoomView
           thread={activeThread}
-          onBack={() => setSelectedThreadId(null)}
+          onBack={() => {
+            setSelectedThreadId(null);
+            if (threadOrigin === "sessions") {
+              setThreadOrigin(null);
+              setShowAiSessions(true);
+            }
+          }}
           onSend={(text) => aiChatRepository.sendMessage(activeThread.id, text)}
         />
       </div>
@@ -472,7 +482,7 @@ export default function Home() {
       <div className="app-frame">
         <ChatSessionList
           sessions={aiSessions}
-          onOpenSession={(session) => { setShowAiSessions(false); setSelectedThreadId(session.id); }}
+          onOpenSession={(session) => openAiSession(session.id)}
           onNewSession={startNewAiSession}
           onBack={() => setShowAiSessions(false)}
         />
