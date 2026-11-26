@@ -57,7 +57,7 @@
 { "id": 6, "email": "me@example.com", "nickname": "집콕회원", "realName": "김서연", "identityVerified": false }
 ```
 
-**개발용 시드 계정**(처음 실행할 때 자동 생성, 시드 매물의 판매자): `seller1@jibkog.dev` ~ `seller5@jibkog.dev`, 비밀번호 `jibkog-demo-1234`. 배포 전에 지워야 합니다.
+**개발용 시드 계정**(처음 실행할 때 자동 생성, 예시 매물의 판매자): `seller1@jibkog.dev` ~ `seller5@jibkog.dev`, 비밀번호 `jibkog-demo-1234`. 배포 전에 지워야 합니다.
 
 ## 단지·매물 `/api/complexes`, `/api/listings`
 
@@ -73,7 +73,7 @@
 매물 등록 본문:
 ```json
 {
-  "complexId": "gwacheon-dietre", "area": 84, "floor": 12,
+  "complexId": "catalog-2026000560", "area": 109.7, "floor": 12,
   "salePrice": 1500000000, "premium": 150000000, "optionCost": 10000000, "paidAmount": 450000000,
   "description": "남향 12층이에요. 발코니 확장했어요.",
   "documents": [{ "type": "salesContract", "status": "pending" }],

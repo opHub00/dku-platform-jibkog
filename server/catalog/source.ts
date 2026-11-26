@@ -21,7 +21,8 @@ export interface CatalogSource {
   getComplex(id: string): Promise<CatalogComplexDetail | null>;
   listNotices(query: { status: NoticeStatus | null }): Promise<Notice[]>;
   /** 분양권 매물 핀은 store에서, 공고 핀은 카탈로그에서 */
-  mapMarkers(store: Store, bounds: MapBounds): Promise<MapMarkersResponse>;
+  /** recentDays를 주면 마감 후 그 일수가 지난 공고 핀은 뺀다(null이면 모두) */
+  mapMarkers(store: Store, bounds: MapBounds, options?: { recentDays: number | null }): Promise<MapMarkersResponse>;
 }
 
 // ---------------------------------------------------------------- 쿼리 파싱(약속의 일부)
@@ -60,6 +61,15 @@ export function parseBounds(params: URLSearchParams): MapBounds {
   if (!(swLat < neLat && swLng < neLng)) throw badRequest("bounds는 남서쪽 좌표가 북동쪽보다 작아야 해요");
   if (neLat - swLat > MAX_SPAN_DEG || neLng - swLng > MAX_SPAN_DEG) throw badRequest("지도 영역이 너무 넓어요. 확대해서 다시 요청해주세요");
   return { swLat, swLng, neLat, neLng };
+}
+
+/** 선택 쿼리 recentDays(0~3650 정수). 없으면 null */
+export function parseRecentDays(params: URLSearchParams): number | null {
+  const raw = params.get("recentDays");
+  if (raw === null || raw === "") return null;
+  const days = Number(raw);
+  if (!Number.isSafeInteger(days) || days < 0 || days > 3650) throw badRequest("recentDays는 0~3650 사이 정수예요");
+  return days;
 }
 
 export function inBounds(b: MapBounds, lat: number, lng: number): boolean {

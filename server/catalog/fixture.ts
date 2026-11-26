@@ -258,10 +258,15 @@ export function createFixtureCatalog(samples: readonly RawNotice[] = SAMPLE_NOTI
         .sort((a, b) => b.publishedOn.localeCompare(a.publishedOn));
     },
 
-    async mapMarkers(store, bounds) {
-      // 공고 핀: 좌표가 있는 공고만
+    async mapMarkers(store, bounds, options) {
+      // 공고 핀: 좌표가 있는 공고만. recentDays를 주면 오래전에 마감한 공고는 뺀다
+      const recentDays = options?.recentDays ?? null;
+      const cutoff = recentDays === null ? null : new Date(Date.parse(`${todayKst()}T00:00:00Z`) - recentDays * 86_400_000).toISOString().slice(0, 10);
       const noticeMarkers: NoticeMarker[] = details()
         .flatMap((d) => d.notices)
+        .filter((n) => cutoff === null || n.status !== "closed" || n.applicationsCloseOn >= cutoff)
+        // 잘라야 할 때 최근 공고가 남도록 마감일 최신순
+        .sort((a, b) => b.applicationsCloseOn.localeCompare(a.applicationsCloseOn))
         .flatMap((n): NoticeMarker[] =>
           n.location && inBounds(bounds, n.location.lat, n.location.lng)
             ? [{ kind: "notice", key: `notice-${n.id}`, noticeId: n.id, complexId: n.complexId, lat: n.location.lat, lng: n.location.lng, title: n.title, status: n.status, applicationsOpenOn: n.applicationsOpenOn, applicationsCloseOn: n.applicationsCloseOn }]

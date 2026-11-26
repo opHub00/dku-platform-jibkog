@@ -4,6 +4,7 @@ import { Layers, MapPin } from "lucide-react";
 import { StatusPill } from "@/components/common/StatusPill";
 import type { MapBounds, MapMarker } from "@/features/catalog/types";
 import { formatWonShort } from "@/features/presale/lib/format";
+import { roundArea } from "@/features/catalog/lib/catalogComplex";
 import { fetchMapMarkers } from "../api/mapApi";
 import { CLUSTER_LEVEL, clusterByDistrict, regionBubbleSize, spreadPins, type ToPixel } from "../lib/cluster";
 import { kakaoMapKey, loadKakaoMaps } from "../lib/loadKakaoMaps";
@@ -171,6 +172,11 @@ export function KakaoMap({
   const toPixel = useMemo(() => (view ? pixelProjector(view) : null), [view]);
   const clusters = useMemo(() => (clustered && toPixel ? clusterByDistrict(visible, districtOf, toPixel) : []), [clustered, visible, districtOf, toPixel]);
   const offsets = useMemo(() => (!clustered && toPixel ? spreadPins(visible, toPixel) : new Map<string, { dx: number; dy: number }>()), [clustered, visible, toPixel]);
+  // 시·도가 달라 합치지 않은 원끼리 겹치면 화면에서 벌린다
+  const bubbleOffsets = useMemo(
+    () => (toPixel ? spreadPins(clusters.map((c) => ({ key: `${c.key}-${c.markers[0]?.key ?? ""}`, lat: c.lat, lng: c.lng })), toPixel, 100) : new Map<string, { dx: number; dy: number }>()),
+    [clusters, toPixel],
+  );
 
   if (failed) return <>{fallback}</>;
 
@@ -193,7 +199,7 @@ export function KakaoMap({
           const price = pinPrice(marker) ?? formatWonShort(marker.premiumWon);
           return (
             <Overlay key={marker.key} map={map} lat={marker.lat} lng={marker.lng} zIndex={2}>
-              <button className="map-pin trade-pin" style={style} onClick={() => onOpenMarker(marker)} aria-label={`${marker.title} ${marker.areaM2}㎡ 분양권 거래${marker.isDemo ? ", 시연용 예시 매물" : ""}`}>
+              <button className="map-pin trade-pin" style={style} onClick={() => onOpenMarker(marker)} aria-label={`${marker.title} ${roundArea(marker.areaM2)}㎡ 분양권 거래${marker.isDemo ? ", 시연용 예시 매물" : ""}`}>
                 {marker.isDemo && <span className="km-demo-pill"><StatusPill tone="sand">예시</StatusPill></span>}
                 <span>거래</span><b>{price}</b>
               </button>
@@ -210,9 +216,11 @@ export function KakaoMap({
       })}
       {map && clustered && clusters.map((cluster) => {
         const size = regionBubbleSize(cluster.count);
+        const key = `${cluster.key}-${cluster.markers[0]?.key ?? ""}`;
+        const offset = bubbleOffsets.get(key) ?? { dx: 0, dy: 0 };
         return (
-          <Overlay key={`${cluster.key}-${cluster.markers[0]?.key ?? ""}`} map={map} lat={cluster.lat} lng={cluster.lng} zIndex={3}>
-            <button className="ps-region-bubble" style={{ left: 0, top: 0, width: size, height: size }} onClick={() => zoomInto(cluster.lat, cluster.lng)} aria-label={`${cluster.key} 매물·공고 ${cluster.count}건 확대해서 보기`}>
+          <Overlay key={key} map={map} lat={cluster.lat} lng={cluster.lng} zIndex={3}>
+            <button className="ps-region-bubble" style={{ left: offset.dx, top: offset.dy, width: size, height: size }} onClick={() => zoomInto(cluster.lat, cluster.lng)} aria-label={`${cluster.key} 매물·공고 ${cluster.count}건 확대해서 보기`}>
               <span>{cluster.key}</span><b>· {cluster.count}건</b>
             </button>
           </Overlay>

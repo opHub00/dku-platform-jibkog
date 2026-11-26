@@ -52,7 +52,9 @@ export function clusterByDistrict(markers: MapMarker[], districtOf: (marker: Map
         const b = toPixel(groups[j].lat, groups[j].lng);
         const distance = Math.hypot(a.x - b.x, a.y - b.y);
         const minDistance = (regionBubbleSize(groups[i].markers.length) + regionBubbleSize(groups[j].markers.length)) / 2 + 4;
-        if (distance < minDistance && (!best || distance < best.distance)) best = { i, j, distance };
+        // 시·도가 다른 원은 합치지 않는다(겹치면 화면에서 벌린다: spreadPins)
+        const sameSido = groups[i].names[0].split(" ")[0] === groups[j].names[0].split(" ")[0];
+        if (sameSido && distance < minDistance && (!best || distance < best.distance)) best = { i, j, distance };
       }
     }
     if (!best) break;
@@ -70,7 +72,7 @@ export function clusterByDistrict(markers: MapMarker[], districtOf: (marker: Map
  * 가까운 핀끼리 겹치지 않게 화면에서 조금씩 벌린다(기존 그림 지도의 spreadPositions와 같은 방식, px 단위).
  * 같은 좌표(같은 단지)의 핀은 정해진 방향으로 펼친다.
  */
-export function spreadPins(markers: MapMarker[], toPixel: ToPixel, minDistance = 48): Map<string, { dx: number; dy: number }> {
+export function spreadPins(markers: { key: string; lat: number; lng: number }[], toPixel: ToPixel, minDistance = 48): Map<string, { dx: number; dy: number }> {
   const origin = markers.map((m) => toPixel(m.lat, m.lng));
   const pts = origin.map((p) => ({ ...p }));
   for (let iteration = 0; iteration < 40; iteration++) {

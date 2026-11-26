@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { clearSessionCookie, parseCookies, SESSION_COOKIE, sessionCookie } from "../auth";
 import path from "node:path";
 import { createLiveCatalog } from "../catalog/live";
-import { parseBounds, parseComplexQuery, parseNoticeQuery } from "../catalog/source";
+import { parseBounds, parseComplexQuery, parseNoticeQuery, parseRecentDays } from "../catalog/source";
 import { syncCatalogExamples } from "../catalog/store";
 import { EventHub } from "../realtime";
 import { createJsonFileStore } from "../store/jsonFileStore";
@@ -123,7 +123,7 @@ export function createAppApi(options: { dataFile: string; log?: (message: string
     },
   });
   route("GET", "/api/catalog/notices", async ({ req, res }) => { await catalogReady; sendJson(res, 200, { notices: await catalog.listNotices(parseNoticeQuery(query(req))) }); });
-  route("GET", "/api/map/markers", async ({ req, res }) => { await catalogReady; sendJson(res, 200, await catalog.mapMarkers(store, parseBounds(query(req)))); });
+  route("GET", "/api/map/markers", async ({ req, res }) => { await catalogReady; sendJson(res, 200, await catalog.mapMarkers(store, parseBounds(query(req)), { recentDays: parseRecentDays(query(req)) })); });
 
   // ---------- 채팅 ----------
   route("GET", "/api/chats", async ({ res, user }) => sendJson(res, 200, { rooms: await svc.listChats(store, svc.requireUser(user).id) }));

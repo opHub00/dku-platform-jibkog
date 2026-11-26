@@ -91,7 +91,7 @@ export function createLiveCatalog(options: {
     async searchComplexes(query) { await ready; return createFixtureCatalog(active).searchComplexes(query); },
     async getComplex(id) { await ready; return createFixtureCatalog(active).getComplex(id); },
     async listNotices(query) { await ready; return createFixtureCatalog(active).listNotices(query); },
-    async mapMarkers(store, bounds) { await ready; return createFixtureCatalog(active).mapMarkers(store, bounds); },
+    async mapMarkers(store, bounds, options) { await ready; return createFixtureCatalog(active).mapMarkers(store, bounds, options); },
   };
   return {
     catalog,

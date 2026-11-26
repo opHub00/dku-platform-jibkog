@@ -1,5 +1,6 @@
 import { field } from "@/features/auth/api/httpClient";
 import { NOTICE_STATUSES, type MapBounds, type MapMarker, type MapMarkersResponse } from "@/features/catalog/types";
+import { RECENT_CLOSED_DAYS } from "@/features/catalog/lib/noticeFilter";
 
 /**
  * 지도 핀 저장소(GET /api/map/markers, docs/api-catalog.md).
@@ -32,7 +33,8 @@ function isMarker(value: unknown): value is MapMarker {
 export async function fetchMapMarkers(bounds: MapBounds, signal?: AbortSignal): Promise<MapMarkersResponse> {
   const b = clampBounds(bounds);
   const param = [b.swLat, b.swLng, b.neLat, b.neLng].map((v) => v.toFixed(6)).join(",");
-  const response = await fetch(`/api/map/markers?bounds=${param}`, { credentials: "same-origin", signal });
+  // 목록과 같은 기준(마감 후 RECENT_CLOSED_DAYS일까지)으로 서버가 미리 걸러야, 넓은 범위에서 지난 공고 때문에 핀이 잘리지 않는다
+  const response = await fetch(`/api/map/markers?bounds=${param}&recentDays=${RECENT_CLOSED_DAYS}`, { credentials: "same-origin", signal });
   const json: unknown = await response.json().catch(() => null);
   if (!response.ok) throw new Error("지도 핀을 불러오지 못했어요");
   const markers = field(json, "markers");

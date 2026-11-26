@@ -161,6 +161,7 @@ GET /api/catalog/notices?status=open
 | 쿼리 | 필수 | 설명 |
 |---|---|---|
 | `bounds` | 예 | `swLat,swLng,neLat,neLng`. 카카오 `map.getBounds()`의 남서쪽(`getSouthWest()`)과 북동쪽(`getNorthEast()`) 꼭짓점 |
+| `recentDays` | 아니요 | 0~3650 정수. 주면 마감 후 이 일수가 지난 공고 핀은 뺀다(화면은 목록과 같은 14를 보낸다). 빼면 모든 공고 |
 
 ```http
 GET /api/map/markers?bounds=37.40,126.80,37.70,127.20
@@ -175,11 +176,11 @@ GET /api/map/markers?bounds=37.40,126.80,37.70,127.20
       "kind": "listing",
       "key": "listing-1",
       "listingId": 1,
-      "complexId": "raemian-onebailey",
-      "lat": 37.5076,
-      "lng": 127.0003,
-      "title": "래미안 원베일리",
-      "areaM2": 84,
+      "complexId": "catalog-2026000560",
+      "lat": 37.5189899995753,
+      "lng": 126.900096441767,
+      "title": "해링턴 플레이스 문래",
+      "areaM2": 109.7007,
       "premiumWon": 320000000,
       "isDemo": true
     },
@@ -206,8 +207,9 @@ GET /api/map/markers?bounds=37.40,126.80,37.70,127.20
   - 매물 하나에 핀 하나다. 좌표는 매물 단지(`GET /api/complexes`) 좌표다. 같은 단지의 매물은 좌표가 같으므로 화면이 묶어서 보여준다.
   - 누르면 `GET /api/listings/:listingId`로 간다. `complexId`는 기존 단지 id다(카탈로그 단지 id가 아니다).
 - 공고 핀(`notice`): `location`이 있는 공고만 준다. `complexId`로 `GET /api/catalog/complexes/:id`를 부른다.
-- 영역 안 핀이 `MAX_MAP_MARKERS`(300)개보다 많으면 그만큼만 주고 `truncated: true`로 표시한다. 이때 화면은 "지도를 확대하면 더 보여요"처럼 안내한다.
+- 영역 안 핀이 `MAX_MAP_MARKERS`(300)개보다 많으면 그만큼만 주고 `truncated: true`로 표시한다. 매물 핀을 먼저, 공고 핀은 마감일 최신순으로 남긴다. 이때 화면은 "지도를 확대하면 더 보여요"처럼 안내한다.
 - 오류(모두 400 `bad_request`)
+  - `recentDays`가 0~3650 정수가 아니다.
   - 숫자가 4개가 아니다.
   - 위도·경도가 범위를 벗어난다.
   - 남서쪽 좌표가 북동쪽 좌표보다 작지 않다.
@@ -224,7 +226,7 @@ GET /api/map/markers?bounds=37.40,126.80,37.70,127.20
 
 ```json
 {
-  "complexId": "gwacheon-dietre",
+  "complexId": "catalog-2026000560",
   "catalogComplexId": "2026000560",
   "housingModelNumber": "01",
   "area": 109.7007,
