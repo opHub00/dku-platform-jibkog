@@ -1,0 +1,305 @@
+{
+  "notices": [
+    {
+      "notice_number": "2026820010",
+      "urls": [
+        "https://apply.lh.or.kr/lhapply/apply/noti/an/view.do?bbsSn=9102432473&ccrCnntSysDsCd=02&mi=1079",
+        "https://apply.lh.or.kr/lhapply/apply/wt/wrtanc/selectWrtancInfo.do?aisTpCd=39&ccrCnntSysDsCd=02&mi=1027&panId=0000061179&srchUppAisTpCd=39&uppAisTpCd=39"
+      ],
+      "profiles": {
+        "separate_households": {
+          "scope": "인천계양 A17블록 신혼희망타운 본청약 서류 제출 중 배우자 분리세대 예시",
+          "add_required": {
+            "spouse_register": "resident",
+            "family_certificate": "family"
+          }
+        },
+        "same_household": {
+          "scope": "인천계양 A17블록 신혼희망타운 본청약 중 배우자가 신청자 등본에 등재된 신혼부부. 가족관계증명서 추가 제출 사유가 없는 경우"
+        },
+        "lease_deposit": {
+          "scope": "인천계양 A17블록 신혼희망타운 본청약 중 배우자 분리세대이며 별도 임차보증금 증빙이 필요한 경우",
+          "add_required": {
+            "spouse_register": "resident",
+            "family_certificate": "family",
+            "asset": "asset",
+            "lease": "lease"
+          }
+        }
+      },
+      "common": {
+        "scope": "인천계양 A17블록 신혼희망타운 본청약 신혼부부 서류 점검",
+        "notice_date": "2026-09-30",
+        "required_signers": [
+          "신청자",
+          "배우자"
+        ],
+        "add_required": {
+          "applicant_id": "id",
+          "applicant_register": "resident",
+          "privacy_consent": "privacy",
+          "financial_consent": "financial",
+          "applicant_abstract": "abstract",
+          "marriage_certificate": "marriage",
+          "immigration_record": "immigration"
+        },
+        "documents": {
+          "id": {
+            "fields": {
+              "kind": {
+                "label": "신분증 종류",
+                "check": "enum",
+                "argument": [
+                  "주민등록증",
+                  "운전면허증",
+                  "여권"
+                ]
+              }
+            }
+          },
+          "resident": {
+            "fields": {
+              "detail": {
+                "label": "발급 유형",
+                "check": "equals",
+                "argument": "상세"
+              },
+              "id_number": {
+                "label": "세대원 주민등록번호",
+                "check": "resident_number"
+              },
+              "history": {
+                "label": "주소 변동 내역",
+                "check": "nonempty"
+              },
+              "relationship": {
+                "label": "세대주와의 관계",
+                "check": "nonempty"
+              },
+              "moved_date": {
+                "label": "전입일",
+                "check": "date"
+              },
+              "changed_date": {
+                "label": "변동일",
+                "check": "date"
+              },
+              "changed_reason": {
+                "label": "변동 사유",
+                "check": "nonempty"
+              },
+              "household_reason": {
+                "label": "세대 구성 사유",
+                "check": "nonempty"
+              },
+              "issued": {
+                "label": "발급일",
+                "check": "min_date",
+                "argument": "$notice_date"
+              }
+            }
+          },
+          "abstract": {
+            "fields": {
+              "detail": {
+                "label": "발급 유형",
+                "check": "equals",
+                "argument": "상세"
+              },
+              "personal_changes": {
+                "label": "인적사항 변경 내역",
+                "check": "nonempty"
+              },
+              "address_changes": {
+                "label": "주소 변동 내역",
+                "check": "nonempty"
+              },
+              "household_head": {
+                "label": "세대주 성명",
+                "check": "nonempty"
+              },
+              "relationship": {
+                "label": "세대주와의 관계",
+                "check": "nonempty"
+              },
+              "issued": {
+                "label": "발급일",
+                "check": "min_date",
+                "argument": "$notice_date"
+              }
+            }
+          },
+          "family": {
+            "fields": {
+              "detail": {
+                "label": "발급 유형",
+                "check": "equals",
+                "argument": "상세"
+              },
+              "id_number": {
+                "label": "주민등록번호",
+                "check": "resident_number"
+              },
+              "issued": {
+                "label": "발급일",
+                "check": "min_date",
+                "argument": "$notice_date"
+              }
+            }
+          },
+          "marriage": {
+            "fields": {
+              "detail": {
+                "label": "발급 유형",
+                "check": "equals",
+                "argument": "상세"
+              },
+              "spouse": {
+                "label": "배우자 성명",
+                "check": "nonempty"
+              },
+              "reported": {
+                "label": "혼인신고일",
+                "check": "date"
+              },
+              "history": {
+                "label": "혼인 상세 내역",
+                "check": "nonempty"
+              },
+              "issued": {
+                "label": "발급일",
+                "check": "min_date",
+                "argument": "$notice_date"
+              }
+            }
+          },
+          "immigration": {
+            "fields": {
+              "id_number": {
+                "label": "주민등록번호",
+                "check": "resident_number"
+              },
+              "start": {
+                "label": "기록대조 시작일",
+                "check": "date_equals",
+                "argument": "$immigration_start"
+              },
+              "end": {
+                "label": "기록대조 종료일",
+                "check": "date_equals",
+                "argument": "$notice_date"
+              },
+              "output": {
+                "label": "출입국 기록 출력",
+                "check": "enum",
+                "argument": [
+                  "Y",
+                  "예"
+                ]
+              },
+              "record": {
+                "label": "출입국 기록",
+                "check": "nonempty"
+              },
+              "issued": {
+                "label": "발급일",
+                "check": "min_date",
+                "argument": "$notice_date"
+              }
+            }
+          },
+          "passport_info": {
+            "fields": {
+              "issued": {
+                "label": "발급일",
+                "check": "min_date",
+                "argument": "$notice_date"
+              }
+            }
+          },
+          "employment": {
+            "fields": {
+              "service": {
+                "label": "복무 시작일",
+                "check": "date"
+              },
+              "issued": {
+                "label": "발급일",
+                "check": "min_date",
+                "argument": "$notice_date"
+              }
+            }
+          },
+          "pregnancy": {
+            "fields": {
+              "issued": {
+                "label": "발급일",
+                "check": "date_range",
+                "argument": [
+                  "2026-09-30",
+                  "2026-10-30"
+                ]
+              }
+            }
+          },
+          "single_parent": {
+            "fields": {
+              "issued": {
+                "label": "발급일",
+                "check": "min_date",
+                "argument": "$notice_date"
+              }
+            }
+          },
+          "seal": {
+            "fields": {
+              "issued": {
+                "label": "발급일",
+                "check": "min_date",
+                "argument": "$notice_date"
+              }
+            }
+          },
+          "signature_certificate": {
+            "fields": {
+              "issued": {
+                "label": "발급일",
+                "check": "min_date",
+                "argument": "$notice_date"
+              }
+            }
+          }
+        }
+      },
+      "require_profile": true
+    },
+    {
+      "notice_number": null,
+      "urls": [
+        "https://vertium.hobanapt.co.kr/cn6-hoban/web/sub/occupant.pdf"
+      ],
+      "require_profile": true,
+      "common": {
+        "scope": "인천 청라국제도시 A-3블록 호반베르디움 외국인 전용 임대주택 2019년 공고, 1순위 외국인 계약 단계",
+        "add_required": {
+          "applicant_passport": "passport",
+          "foreign_registration_certificate": "foreign_registration_certificate",
+          "foreign_registration_card": "foreign_registration_card",
+          "contract_payment": "contract_payment"
+        }
+      },
+      "profiles": {
+        "foreign_first_priority": {
+          "add_required": {
+            "applicant_visa": "visa"
+          }
+        }
+      }
+    }
+  ],
+  "demo": {
+    "notice_number": "2026820010",
+    "profile": "separate_households",
+    "birth_date": "1990-01-01"
+  }
+}
