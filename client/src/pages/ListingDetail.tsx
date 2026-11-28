@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Bot,
   Calculator,
+  ExternalLink,
   Check,
   ChevronRight,
   CircleHelp,
@@ -22,11 +23,14 @@ import type { Listing } from "@/types";
 import { StatusPill } from "@/components/common/StatusPill";
 import { SectionHeader } from "@/components/common/SectionHeader";
 import { TrustReportView } from "@/features/presale/components/TrustReportView";
+import { DemoListingPill } from "@/features/presale/components/DemoListingPill";
+import { exclusiveAreaRange, useCatalogComplex } from "@/features/catalog/lib/useCatalogComplex";
+import { formatDay, formatFullDay, formatMonthKorean, NOTICE_STATUS_LABELS } from "@/features/catalog/lib/noticeText";
 import { splitWon, suggestedOffer } from "@/features/chat/lib/format";
 import { useChatRooms } from "@/features/chat/lib/useChat";
 import { currentBuyer } from "@/features/presale/data/currentBuyer";
 import { calcFundsBreakdown } from "@/features/presale/lib/funds";
-import { formatWon, formatRate } from "@/features/presale/lib/format";
+import { formatWon, formatRate, formatWonShort } from "@/features/presale/lib/format";
 import { calcMatchSummary } from "@/features/presale/lib/match";
 import { calcRoi } from "@/features/presale/lib/roi";
 import {
@@ -85,6 +89,10 @@ export function ListingDetail({ listing, liked, isMine = false, onBack, onToggle
   const sellerInitial = presale?.seller.realName.slice(0, 2) ?? "판매";
   const offerAmount = funds ? suggestedOffer(funds.totalRequired) : null;
   const offerParts = offerAmount ? splitWon(offerAmount) : null;
+  // 청약 공고(GET /api/catalog/notices)와 단지 상세(주택형). 공고가 없으면 기존 문구를 그대로 쓴다
+  const notice = listing.notice;
+  const noticeComplex = useCatalogComplex(notice?.complexId);
+  const noticeValue = (value: string | null | undefined, original: string) => (notice ? value ?? "확인 중" : original);
 
   return (
     <div className="detail-screen">
@@ -105,7 +113,7 @@ export function ListingDetail({ listing, liked, isMine = false, onBack, onToggle
         </div>
 
         {isTrade ? <>
-          <div className="trade-badge-row"><StatusPill tone="green">거래 가능</StatusPill><StatusPill tone="sand">가격 협의 가능</StatusPill><span className="trade-updated"><span className="live-dot" /> 12분 전 업데이트</span></div>
+          <div className="trade-badge-row"><StatusPill tone="green">거래 가능</StatusPill><StatusPill tone="sand">가격 협의 가능</StatusPill>{presale?.isDemo && <DemoListingPill />}<span className="trade-updated"><span className="live-dot" /> 12분 전 업데이트</span></div>
           <section className="total-funds-card">
             <div className="funds-heading"><div><p className="eyebrow">거래 요약</p><h2>예상 총 필요자금</h2></div><button onClick={() => setShowAi(true)}><Sparkles size={14} /> 내 자금으로 계산</button></div>
             <strong className="total-funds">{funds ? formatWon(funds.totalRequired) : "확인 중"}</strong>
@@ -126,7 +134,7 @@ export function ListingDetail({ listing, liked, isMine = false, onBack, onToggle
 
           <section className="seller-card"><div className="seller-avatar-large">{sellerInitial}</div><div className="seller-copy"><p className="eyebrow">매도자 신뢰도</p><strong>{presale ? `${presale.seller.identityVerified ? "안심 판매자" : "거래 확인 필요 판매자"} · ${presale.seller.nickname}` : "판매자 확인 중"}</strong><span><ShieldCheck size={12} /> {presale ? `${presale.seller.identityVerified ? "본인 인증" : "본인 인증 필요"} · 거래 이력 ${presale.seller.tradeCount}건` : "판매자 정보를 확인 중이에요"}</span></div><ChevronRight size={16} /></section>
         </> : <>
-          <div className="detail-stats"><div><span>전용면적</span><strong>59.86㎡</strong></div><div><span>층수</span><strong>최고 29층</strong></div><div><span>등록일</span><strong>{listing.date}</strong></div></div><section className="detail-section"><SectionHeader title="공고 설명" /><p className="detail-description">청약 일정과 자격 조건을 한눈에 확인할 수 있는 공고입니다. 나의 청약 프로필을 기준으로 신청 가능성을 먼저 살펴보고 필요한 서류를 미리 준비해보세요.</p></section><section className="detail-section"><SectionHeader title="주요 정보" /><div className="info-grid"><div><span>입주 예정</span><strong>2028년 2월</strong></div><div><span>분양가</span><strong>8억 2,400만</strong></div><div><span>청약 일정</span><strong>11. 24 ~ 11. 26</strong></div><div><span>공급 규모</span><strong>총 512세대</strong></div></div></section><button className="safety-note score-entry" onClick={() => setShowScore(true)}><Calculator size={19} /><div><strong>내 청약 가점 계산하기</strong><p>무주택기간 · 부양가족수 · 통장 가입기간으로 가점을 계산해요.</p></div><ChevronRight size={16} /></button><div className="safety-note"><ShieldCheck size={19} /><div><strong>청약 서류를 미리 준비하세요</strong><p>집콕 AI가 내 프로필 기준 필요 서류를 정리해드려요.</p></div><ChevronRight size={16} /></div>
+          <div className="detail-stats"><div><span>전용면적</span><strong>{noticeValue(noticeComplex && exclusiveAreaRange(noticeComplex), "59.86㎡")}</strong></div><div><span>{notice ? "주택형" : "층수"}</span><strong>{noticeValue(noticeComplex && `${noticeComplex.housingTypeCount}개`, "최고 29층")}</strong></div><div><span>{notice ? "모집공고" : "등록일"}</span><strong>{notice ? formatDay(notice.publishedOn) : listing.date}</strong></div></div><section className="detail-section"><SectionHeader title="공고 설명" /><p className="detail-description">{notice ? `청약 접수는 ${formatFullDay(notice.applicationsOpenOn)}부터 ${formatFullDay(notice.applicationsCloseOn)}까지예요. 특별공급·일반공급 자격과 세부 일정은 청약홈 공고문에서 꼭 확인해주세요.` : "청약 일정과 자격 조건을 한눈에 확인할 수 있는 공고입니다. 나의 청약 프로필을 기준으로 신청 가능성을 먼저 살펴보고 필요한 서류를 미리 준비해보세요."}</p></section><section className="detail-section"><SectionHeader title="주요 정보" /><div className="info-grid"><div><span>입주 예정</span><strong>{noticeValue(noticeComplex && (noticeComplex.moveInMonth ? formatMonthKorean(noticeComplex.moveInMonth) : "공고문 확인"), "2028년 2월")}</strong></div><div><span>{notice ? "분양가(주택형별 최고가)" : "분양가"}</span><strong>{noticeValue(noticeComplex && `${formatWonShort(noticeComplex.maxPriceRangeWon.min)} ~ ${formatWonShort(noticeComplex.maxPriceRangeWon.max)}`, "8억 2,400만")}</strong></div><div><span>{notice ? "접수 기간" : "청약 일정"}</span><strong>{notice ? `${formatDay(notice.applicationsOpenOn)} ~ ${formatDay(notice.applicationsCloseOn)}` : "11. 24 ~ 11. 26"}</strong></div><div><span>공급 규모</span><strong>{notice ? `총 ${notice.totalUnits.toLocaleString("ko-KR")}세대` : "총 512세대"}</strong></div></div></section>{notice && <a className="safety-note score-entry" href={notice.noticeUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={19} /><div><strong>청약홈에서 공고문 보기</strong><p>{NOTICE_STATUS_LABELS[notice.status]} · 접수 {formatDay(notice.applicationsOpenOn)} ~ {formatDay(notice.applicationsCloseOn)}</p></div><ChevronRight size={16} /></a>}<button className="safety-note score-entry" onClick={() => setShowScore(true)}><Calculator size={19} /><div><strong>내 청약 가점 계산하기</strong><p>무주택기간 · 부양가족수 · 통장 가입기간으로 가점을 계산해요.</p></div><ChevronRight size={16} /></button><div className="safety-note"><ShieldCheck size={19} /><div><strong>청약 서류를 미리 준비하세요</strong><p>집콕 AI가 내 프로필 기준 필요 서류를 정리해드려요.</p></div><ChevronRight size={16} /></div>
         </>}
       </main>
 

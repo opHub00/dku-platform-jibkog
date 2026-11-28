@@ -1,0 +1,20 @@
+/* 카카오 지도(km-). 지도 틀은 기존 .map-canvas(높이·모서리·테두리)를 그대로 쓴다 */
+
+/* 지도 SDK의 내부 z-index가 위 버튼(전환 토글·안내)을 덮지 않게 별도 층으로 가둔다 */
+.km-host { position: absolute; inset: 0; z-index: 0; isolation: isolate; }
+
+/* 오버레이 기준점(좌표). 핀·원은 기존 클래스의 translate(-50%, -50%)로 이 점 위에 놓인다 */
+.km-overlay { position: relative; width: 0; height: 0; }
+.km-overlay .map-pin,
+.km-overlay .ps-region-bubble { cursor: pointer; }
+/* 기존 핀 꼬리 끝이 좌표를 가리키도록 핀 몸통을 위로 올린다 */
+.km-overlay .map-pin { margin-top: -18px; }
+
+/* 예시 매물 핀: 기존 StatusPill을 핀 위에 작게 붙인다 */
+.km-demo-pill { position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%); }
+.km-demo-pill .status-pill { min-height: 16px; padding: 2px 5px; font-size: 9px; }
+
+.map-scale.km-status { z-index: 3; max-width: calc(100% - 24px); }
+
+/* 레이아웃 수정: 지도 오른쪽 끝 가까이 있는 핀은 남은 폭이 좁아 "청약/공고" 글자가 세로로 쪼개졌다. 핀 안 글자는 줄바꿈하지 않는다(색·크기는 그대로) */
+.map-canvas .map-pin { white-space: nowrap; }

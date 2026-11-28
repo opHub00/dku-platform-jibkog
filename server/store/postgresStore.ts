@@ -70,9 +70,16 @@ function createTx(client: Client): StoreTx {
     listComplexes: () => many<ComplexRow>(complexSelect + " ORDER BY id"),
     listComplexAreas: () => many<ComplexAreaRow>("SELECT * FROM complex_areas ORDER BY complex_id,area_m2"),
     findComplex: id => one<ComplexRow>(complexSelect + " WHERE id=$1", [id]),
+    // 청약 카탈로그 단지(예시 매물·카탈로그 등록)용. 005_catalog_listings.sql
+    upsertDistrict: row => exec("INSERT INTO districts(id,sido,sigungu) VALUES ($1,$2,$3) ON CONFLICT(id) DO NOTHING", [row.id,row.sido,row.sigungu]),
+    upsertComplex: row => exec("INSERT INTO complexes(id,district_id,name,address,latitude,longitude,move_in_month,resale_restriction_ends_on,reference_premium_rate,image) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(id) DO UPDATE SET district_id=EXCLUDED.district_id,name=EXCLUDED.name,address=EXCLUDED.address,latitude=EXCLUDED.latitude,longitude=EXCLUDED.longitude,move_in_month=EXCLUDED.move_in_month,resale_restriction_ends_on=EXCLUDED.resale_restriction_ends_on,reference_premium_rate=EXCLUDED.reference_premium_rate,image=EXCLUDED.image",
+      [row.id,row.district_id,row.name,row.address,row.latitude,row.longitude,row.move_in_month,row.resale_restriction_ends_on,row.reference_premium_rate,row.image]),
+    upsertComplexArea: row => exec("INSERT INTO complex_areas(complex_id,area_m2) VALUES ($1,$2) ON CONFLICT DO NOTHING", [row.complex_id,row.area_m2]),
     listTradeListings: () => many<ListingRow>("SELECT * FROM listings WHERE type='trade'"),
     findListing: id => one<ListingRow>("SELECT * FROM listings WHERE id=$1 AND type='trade'", [id]),
-    insertListing: row => insert<ListingRow>("listings", row, ["type","complex_id","title","description","created_at","urgent","seller_id","status","area_m2","floor","sale_price","premium","option_cost","paid_amount"]),
+    // 카탈로그 필드는 없으면 NULL, is_demo는 없으면 FALSE(005_catalog_listings.sql)
+    insertListing: row => insert<ListingRow>("listings", { ...row, catalog_complex_id: row.catalog_complex_id ?? null, housing_model_number: row.housing_model_number ?? null, is_demo: row.is_demo ?? false },
+      ["type","complex_id","title","description","created_at","urgent","seller_id","status","area_m2","floor","sale_price","premium","option_cost","paid_amount","catalog_complex_id","housing_model_number","is_demo"]),
     updateListing: (id, patch) => update<ListingRow>("listings", id, patch, ["description","status","premium","urgent"], " AND type='trade'"),
     listTradeDocuments: ids => many<TradeDocumentRow>("SELECT * FROM trade_documents WHERE listing_id=ANY($1::integer[])", [ids]),
     upsertTradeDocument: row => exec("INSERT INTO trade_documents(listing_id,kind,status,storage_key) VALUES ($1,$2,$3,$4) ON CONFLICT(listing_id,kind) DO UPDATE SET status=EXCLUDED.status,storage_key=EXCLUDED.storage_key", [row.listing_id,row.kind,row.status,row.storage_key]),

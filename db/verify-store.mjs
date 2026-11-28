@@ -23,14 +23,25 @@ try {
   const { createPostgresStore } = await vite.ssrLoadModule('/server/store/postgresStore.ts');
   const { buildSeedTables, SEED_PASSWORD } = await vite.ssrLoadModule('/server/store/seed.ts');
   const svc = await vite.ssrLoadModule('/server/api/services.ts');
+  const { syncCatalogExamples } = await vite.ssrLoadModule('/server/catalog/store.ts');
+  const { createFixtureCatalog } = await vite.ssrLoadModule('/server/catalog/fixture.ts');
   const config = { databaseUrl: scoped.toString(), dbDir: path.join(root,'db') };
   store = createPostgresStore({ ...config, seed: buildSeedTables });
-  const seller = await svc.login(store, { email:'seller1@jibkog.dev', password:SEED_PASSWORD });
+  // 시드는 예시 판매자 계정만 만든다. 예시 매물은 앱과 같은 경로로 청약 공고 단지(임시 응답 5개) 위에 만든다
+  const catalog = createFixtureCatalog();
+  const details = (await Promise.all((await catalog.searchComplexes({ q:'', region:null, page:1 })).items.map(item => catalog.getComplex(item.id)))).filter(Boolean);
+  assert.ok(await syncCatalogExamples(store, details) > 0, 'catalog demo listings must be created');
+  assert.equal(await syncCatalogExamples(store, details), 0, 'catalog demo listings must not be duplicated');
   const buyer = await svc.signup(store, { email:'buyer@example.test', password:'test-password-123', nickname:'Buyer', realName:'Test Buyer' });
   assert.ok(await svc.userFromToken(store, buyer.token));
   const listings = await store.read(tx => tx.listTradeListings());
-  const listing = listings.find(row => row.seller_id === seller.user.id && row.status === 'selling');
-  assert.ok(listing, 'seed seller must have a selling listing');
+  const listing = listings.find(row => row.is_demo === true && row.status === 'selling');
+  assert.ok(listing, 'a demo listing must be selling');
+  assert.equal(typeof listing.catalog_complex_id, 'string');
+  assert.equal(typeof listing.housing_model_number, 'string');
+  assert.ok(await store.read(tx => tx.findComplex(listing.complex_id)), 'catalog complex row must exist');
+  const seller = await svc.login(store, { email:'seller' + listing.seller_id + '@jibkog.dev', password:SEED_PASSWORD });
+  assert.equal((await svc.getListing(store, null, listing.id)).isDemo, true);
   assert.equal(typeof listing.sale_price, 'number');
   assert.equal(typeof listing.created_at, 'string');
   await svc.setFavorite(store, buyer.user.id, listing.id, { liked:true });

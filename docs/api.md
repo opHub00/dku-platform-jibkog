@@ -5,6 +5,7 @@
 - 주소는 모두 같은 출처(`http://localhost:3000`)의 `/api/...`입니다.
 - 요청·응답 본문은 JSON입니다. **본문이 있는 요청은 `Content-Type: application/json`이 필수**입니다(아니면 415). 다른 사이트에서 폼으로 요청을 위조하는 것(CSRF)을 막는 장치입니다.
 - 금액은 모두 **원 단위 정수**, 시각은 ISO 8601 문자열(UTC)입니다.
+- 청약 공고 카탈로그·지도 핀 API(`/api/catalog/*`, `/api/map/markers`)와 매물 등록 추가 필드(`catalogComplexId`, `housingModelNumber`, `isDemo`)는 [api-catalog.md](./api-catalog.md)에 있습니다.
 
 ## 공통 규칙
 
@@ -56,7 +57,7 @@
 { "id": 6, "email": "me@example.com", "nickname": "집콕회원", "realName": "김서연", "identityVerified": false }
 ```
 
-**개발용 시드 계정**(처음 실행할 때 자동 생성, 시드 매물의 판매자): `seller1@jibkog.dev` ~ `seller5@jibkog.dev`, 비밀번호 `jibkog-demo-1234`. 배포 전에 지워야 합니다.
+**개발용 시드 계정**(처음 실행할 때 자동 생성, 예시 매물의 판매자): `seller1@jibkog.dev` ~ `seller5@jibkog.dev`, 비밀번호 `jibkog-demo-1234`. 배포 전에 지워야 합니다.
 
 ## 단지·매물 `/api/complexes`, `/api/listings`
 
@@ -72,7 +73,7 @@
 매물 등록 본문:
 ```json
 {
-  "complexId": "gwacheon-dietre", "area": 84, "floor": 12,
+  "complexId": "catalog-2026000560", "area": 109.7, "floor": 12,
   "salePrice": 1500000000, "premium": 150000000, "optionCost": 10000000, "paidAmount": 450000000,
   "description": "남향 12층이에요. 발코니 확장했어요.",
   "documents": [{ "type": "salesContract", "status": "pending" }],

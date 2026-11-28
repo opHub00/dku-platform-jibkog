@@ -2,6 +2,8 @@ import type { Listing } from "@/types";
 import type { Complex, PresaleListing } from "../types";
 import { formatMonth, formatRelativeDate, formatWon, formatWonShort } from "./format";
 import { districtKey } from "./mapProjection";
+import { shortAddress } from "@/features/catalog/lib/noticeText";
+import { roundArea } from "@/features/catalog/lib/catalogComplex";
 
 /**
  * 분양권 매물을 기존 화면(ListingCard 등)이 쓰는 Listing 형태로 바꾼다.
@@ -15,8 +17,9 @@ export function toListing(
   return {
     id: listing.id,
     type: "trade",
-    title: `${complex.name} ${listing.area}㎡`,
-    location: complex.address,
+    // 공고 주택형 면적(109.7007㎡)은 소수 둘째 자리까지, 공고 주소("…27-1번지 일원")는 "시도 시군구 동"까지만 보여준다
+    title: `${complex.name} ${roundArea(listing.area)}㎡`,
+    location: complex.id.startsWith("catalog-") ? shortAddress({ address: complex.address, region: complex.sido }) : complex.address,
     price: formatWon(listing.salePrice + listing.premium),
     detail: `입주 예정 ${formatMonth(complex.moveInMonth)} · 프리미엄 ${formatWonShort(listing.premium)}`,
     date: formatRelativeDate(listing.createdAt, now),

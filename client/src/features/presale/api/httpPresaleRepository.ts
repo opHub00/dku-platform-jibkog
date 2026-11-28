@@ -44,6 +44,11 @@ function parseComplex(value: unknown): Complex {
   };
 }
 
+function optionalString<K extends string>(value: unknown, key: K): Partial<Record<K, string>> {
+  const v = field(value, key);
+  return typeof v === "string" ? ({ [key]: v } as Partial<Record<K, string>>) : {};
+}
+
 function isTrustReport(value: unknown): value is TrustReport {
   return typeof field(value, "score") === "number" && typeof field(value, "grade") === "string" && Array.isArray(field(value, "items"));
 }
@@ -81,6 +86,10 @@ function parseListing(value: unknown): PresaleListing {
     createdAt: str(value, "createdAt"),
     ...(isTrustReport(trust) ? { trust } : {}),
     isMine: field(value, "isMine") === true,
+    // 예시 매물 표시와 카탈로그 단지·주택형(docs/api-catalog.md). 서버가 아직 안 주면 빠진다
+    isDemo: field(value, "isDemo") === true,
+    ...optionalString(value, "catalogComplexId"),
+    ...optionalString(value, "housingModelNumber"),
   };
 }
 
@@ -118,6 +127,10 @@ export function createHttpPresaleRepository(): PresaleRepository {
   return {
     listComplexes,
     async getComplex(id) {
+      const cached = (await listComplexes()).find((c) => c.id === id);
+      if (cached) return cached;
+      // 카탈로그 단지로 매물을 등록하면 서버에 단지가 새로 생긴다(docs/api-catalog.md 5절). 목록을 한 번 새로 받는다
+      complexesCache = null;
       return (await listComplexes()).find((c) => c.id === id) ?? null;
     },
     async listListings(options) {
