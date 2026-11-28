@@ -24,8 +24,10 @@ export function asPresaleComplex(detail: CatalogComplexDetail): Complex | null {
 export async function ensureCatalogComplex(tx: StoreTx, detail: CatalogComplexDetail): Promise<string> {
   const complex = asPresaleComplex(detail);
   if (!complex) throw new Error("지원하지 않는 지역입니다");
-  const districtId = `${complex.sido}-${complex.sigungu}`;
-  await tx.upsertDistrict({ id: districtId, sido: complex.sido, sigungu: complex.sigungu });
+  // DB 시드(db/seed.sql)는 시군구 id로 법정동 코드("11650")를 쓰고 (sido, sigungu)가 UNIQUE다. 같은 시군구가 있으면 그 id를 쓴다
+  const existingDistrict = (await tx.listDistricts()).find((d) => d.sido === complex.sido && d.sigungu === complex.sigungu);
+  const districtId = existingDistrict?.id ?? `${complex.sido}-${complex.sigungu}`;
+  if (!existingDistrict) await tx.upsertDistrict({ id: districtId, sido: complex.sido, sigungu: complex.sigungu });
   await tx.upsertComplex({
     id: complex.id, district_id: districtId, name: complex.name, address: complex.address,
     latitude: detail.location?.lat ?? null, longitude: detail.location?.lng ?? null,
