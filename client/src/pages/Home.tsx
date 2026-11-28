@@ -48,7 +48,7 @@ import { TradeChatRoom } from "@/features/chat/components/TradeChatRoom";
 import { ChatRoomView } from "@/pages/ChatRoom";
 import { ChatSessionList } from "@/pages/ChatSessionList";
 
-function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat, onOpenSaved, onOpenNotifications, onOpenListingAlerts }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void; onOpenSaved: () => void; onOpenNotifications: () => void; onOpenListingAlerts: () => void }) {
+function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat, onOpenSaved, onOpenNotifications, onOpenListingAlerts, onEditRegions }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void; onOpenSaved: () => void; onOpenNotifications: () => void; onOpenListingAlerts: () => void; onEditRegions: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
   const listingAlerts = notifications.filter((item) => item.category === "listing");
   const profile = useProfile();
@@ -66,7 +66,7 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
       <header className="topbar">
         <div>
           <Logo />
-          <button className="location-button"><MapPin size={13} /> {interestHeadline(profile.interestRegions)} <ChevronRight size={13} /></button>
+          <button className="location-button" onClick={onEditRegions}><MapPin size={13} /> {interestHeadline(profile.interestRegions)} <ChevronRight size={13} /></button>
         </div>
         <div className="topbar-actions">
           <button className="icon-button" aria-label="찜한 매물" onClick={onOpenSaved}><Heart size={19} /></button>
@@ -490,6 +490,6 @@ export default function Home() {
     );
   }
 
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenSaved={() => setShowSavedListings(true)} onOpenNotifications={() => setNotificationsView({ tab: "listing", showTabs: true })} onOpenListingAlerts={() => setNotificationsView({ tab: "listing", showTabs: false })} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <MyListingsView listings={favoriteListings} onOpenListing={openListing} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenSaved={() => setShowSavedListings(true)} onOpenNotifications={() => setNotificationsView({ tab: "listing", showTabs: true })} onOpenListingAlerts={() => setNotificationsView({ tab: "listing", showTabs: false })} onEditRegions={() => setShowProfile(true)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <MyListingsView listings={favoriteListings} onOpenListing={openListing} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={changeTab} /></div>;
 }
