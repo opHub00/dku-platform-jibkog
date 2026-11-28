@@ -1,4 +1,4 @@
-import { Heart, Home as HomeIcon, MapPin, MessageCircle, UserRound } from "lucide-react";
+import { Building2, Home as HomeIcon, MapPin, MessageCircle, UserRound } from "lucide-react";
 import type { Tab } from "@/types";
 
 export function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
@@ -6,7 +6,7 @@ export function BottomNav({ active, onChange }: { active: Tab; onChange: (tab: T
     { id: "home", label: "홈", icon: <HomeIcon size={19} /> },
     { id: "listings", label: "매물", icon: <MapPin size={19} /> },
     { id: "chat", label: "채팅", icon: <MessageCircle size={19} /> },
-    { id: "favorites", label: "관심", icon: <Heart size={19} /> },
+    { id: "favorites", label: "내매물", icon: <Building2 size={19} /> },
     { id: "my", label: "MY", icon: <UserRound size={19} /> },
   ];
 

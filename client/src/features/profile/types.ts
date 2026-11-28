@@ -17,6 +17,12 @@ export type SubscriptionPeriod = "under6m" | "6mTo1y" | "1to2y" | "2to5y" | "5to
 /** 관심 면적(전용 기준) */
 export type AreaPreference = "upTo59" | "60to84" | "over85";
 
+/** 희망 주거 형태 */
+export type HomeType = "apartment" | "officetel" | "townhouse";
+
+/** 입주 희망 시기 */
+export type MoveInTiming = "within1y" | "1to3y" | "any";
+
 export type UserProfile = {
   /** 이름(닉네임). 필수 */
   name: string;
@@ -28,9 +34,13 @@ export type UserProfile = {
   homelessYears: number | null;
   incomeBracket: IncomeBracket | null;
   subscriptionPeriod: SubscriptionPeriod | null;
+  /** 부양가족수(3명 이상이면 3). 선택 */
+  dependents: number | null;
   /** 관심지역. 1개 이상 필수 */
   interestRegions: Region[];
   interestAreas: AreaPreference[];
+  homeType: HomeType | null;
+  moveInTiming: MoveInTiming | null;
   /** 예산 범위(원 단위 정수). 선택 */
   budgetMin: number | null;
   budgetMax: number | null;

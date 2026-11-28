@@ -16,7 +16,7 @@ export function AuthScreen({
   /** 왜 로그인이 필요한지(예: "채팅하려면 로그인이 필요해요") */
   reason?: string;
   onClose: () => void;
-  onDone: (user: AuthUser) => void;
+  onDone: (user: AuthUser, mode: Mode) => void;
 }) {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -40,7 +40,7 @@ export function AuthScreen({
     setBusy(true);
     try {
       const user = mode === "login" ? await login(email.trim(), password) : await signup(email.trim(), password, nickname.trim(), realName.trim());
-      onDone(user);
+      onDone(user, mode);
     } catch (e) {
       setError(e instanceof Error ? e.message : "다시 시도해주세요");
       setBusy(false);

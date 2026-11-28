@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowLeft,
   Bell,
   Bot,
   ChevronRight,
   CircleHelp,
   FileCheck2,
+  Heart,
   MapPin,
-  MoreHorizontal,
   Plus,
-  Search,
-  SlidersHorizontal,
   ShieldCheck,
   Sparkles,
   UserRound,
@@ -18,6 +17,7 @@ import {
 import { toast } from "sonner";
 import type { Tab, Listing } from "@/types";
 import { listings } from "@/data/listings";
+import { notifications, type NotificationCategory } from "@/data/notifications";
 import { Logo } from "@/components/common/Logo";
 import { StatusPill } from "@/components/common/StatusPill";
 import { SectionHeader } from "@/components/common/SectionHeader";
@@ -31,6 +31,7 @@ import { RegisterListingFlow } from "@/features/presale/components/RegisterListi
 import type { PresaleListing } from "@/features/presale/types";
 import { useLikedPresaleCount } from "@/features/presale/lib/useLikedPresaleCount";
 import { ProfileForm } from "@/features/profile/components/ProfileForm";
+import { OnboardingScreen } from "@/features/profile/components/OnboardingScreen";
 import { useProfile } from "@/features/profile/lib/useProfile";
 import { greetingName, interestHeadline, profileSummary, regionKey, shortName } from "@/features/profile/lib/profileText";
 import { chatRepository } from "@/features/chat/api/chatRepository";
@@ -47,8 +48,9 @@ import { TradeChatRoom } from "@/features/chat/components/TradeChatRoom";
 import { ChatRoomView } from "@/pages/ChatRoom";
 import { ChatSessionList } from "@/pages/ChatSessionList";
 
-function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void }) {
+function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoChat, onOpenSaved, onOpenNotifications, onOpenListingAlerts, onEditRegions }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onGoListings: () => void; onGoChat: () => void; onOpenSaved: () => void; onOpenNotifications: () => void; onOpenListingAlerts: () => void; onEditRegions: () => void }) {
   const tradeListings = homeListings.filter((item) => item.type === "trade");
+  const listingAlerts = notifications.filter((item) => item.category === "listing");
   const profile = useProfile();
   const firstInterest = profile.interestRegions[0];
   const firstInterestTradeCount = firstInterest
@@ -64,11 +66,11 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
       <header className="topbar">
         <div>
           <Logo />
-          <button className="location-button"><MapPin size={13} /> {interestHeadline(profile.interestRegions)} <ChevronRight size={13} /></button>
+          <button className="location-button" onClick={onEditRegions}><MapPin size={13} /> {interestHeadline(profile.interestRegions)} <ChevronRight size={13} /></button>
         </div>
         <div className="topbar-actions">
-          <button className="icon-button" aria-label="검색"><Search size={19} /></button>
-          <button className="icon-button has-badge" aria-label="알림" onClick={() => toast("새로운 맞춤 알림 2건이 있어요") }><Bell size={19} /><span /></button>
+          <button className="icon-button" aria-label="찜한 매물" onClick={onOpenSaved}><Heart size={19} /></button>
+          <button className="icon-button has-badge" aria-label="알림" onClick={onOpenNotifications}><Bell size={19} /><span /></button>
         </div>
       </header>
 
@@ -76,9 +78,8 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
         <section className="welcome-row">
           <div>
             <p className="eyebrow">오늘의 집콕</p>
-            <h1>{greetingName(profile.name)}님에게 맞는<br /><span>다음 집</span>을 찾아봤어요.</h1>
+            <h1>{greetingName(profile.name)}님에게 맞는 <span>다음 집</span>을 찾아봤어요.</h1>
           </div>
-          <div className="mini-avatar">{shortName(profile.name)}</div>
         </section>
 
         <section className="recommendation-banner" onClick={() => tradeListings[0] && onOpenListing(tradeListings[0])}>
@@ -98,10 +99,11 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
         </section>
 
         <section>
-          <SectionHeader eyebrow="맞춤 알림" title="놓치면 아쉬운 소식" action="전체보기" onAction={() => toast("맞춤 알림 전체보기를 준비 중이에요")} />
+          <SectionHeader eyebrow="맞춤 알림" title="놓치면 아쉬운 소식" action="전체보기" onAction={onOpenListingAlerts} />
           <div className="alert-list">
-            <div className="alert-row"><span className="alert-dot green-dot" /><div><strong>관심지역에 새 거래가 올라왔어요</strong><p>래미안 원베일리 · 프리미엄 3.2억</p></div><span className="alert-time">10분 전</span></div>
-            <div className="alert-row"><span className="alert-dot sand-dot" /><div><strong>청약 일정이 곧 시작돼요</strong><p>마곡나루역 오피스텔 · 11월 24일</p></div><span className="alert-time">어제</span></div>
+            {listingAlerts.slice(0, 2).map((item) => (
+              <div className="alert-row" key={item.id}><span className={`alert-dot ${item.dot}-dot`} /><div><strong>{item.title}</strong><p>{item.detail}</p></div><span className="alert-time">{item.time}</span></div>
+            ))}
           </div>
         </section>
 
@@ -121,21 +123,75 @@ function HomeView({ listings: homeListings, onOpenListing, onGoListings, onGoCha
   );
 }
 
+function SavedListingsView({ listings: savedListings, onOpenListing, onToggleLike, onBack }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onToggleLike: (listing: Listing) => void; onBack: () => void }) {
+  return (
+    <div className="screen-content">
+      <header className="page-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button className="icon-button" onClick={onBack}><ArrowLeft size={20} /></button>
+          <div><p className="eyebrow">내 공간</p><h1>찜한 매물</h1></div>
+        </div>
+      </header>
+      <main className="favorites-main">
+        {savedListings.length > 0 ? (
+          <div className="favorite-stack">
+            {savedListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => onToggleLike(listing)} />)}
+          </div>
+        ) : (
+          <p className="ch-empty">아직 찜한 매물이 없어요</p>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function NotificationListView({ initialTab, showTabs = true, onBack }: { initialTab: NotificationCategory; showTabs?: boolean; onBack: () => void }) {
+  const [tab, setTab] = useState<NotificationCategory>(initialTab);
+  const listingAlerts = notifications.filter((item) => item.category === "listing");
+  const systemAlerts = notifications.filter((item) => item.category === "system");
+  const items = !showTabs ? listingAlerts : tab === "listing" ? listingAlerts : systemAlerts;
+  return (
+    <div className="screen-content">
+      <header className="page-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button className="icon-button" onClick={onBack}><ArrowLeft size={20} /></button>
+          <div><p className="eyebrow">{showTabs ? "내 소식" : "맞춤 알림"}</p><h1>{showTabs ? "알림" : "매물 소식"}</h1></div>
+        </div>
+      </header>
+      <main className="chat-main">
+        {showTabs && (
+          <div className="segment-control">
+            <button className={tab === "listing" ? "active" : ""} onClick={() => setTab("listing")}>매물 소식 <span>{listingAlerts.length}</span></button>
+            <button className={tab === "system" ? "active" : ""} onClick={() => setTab("system")}>시스템 공지 <span>{systemAlerts.length}</span></button>
+          </div>
+        )}
+        {items.length > 0 ? (
+          <div className="alert-list">
+            {items.map((item) => (
+              <div className="alert-row" key={item.id}><span className={`alert-dot ${item.dot}-dot`} /><div><strong>{item.title}</strong><p>{item.detail}</p></div><span className="alert-time">{item.time}</span></div>
+            ))}
+          </div>
+        ) : (
+          <p className="ch-empty">아직 알림이 없어요</p>
+        )}
+      </main>
+    </div>
+  );
+}
+
 function ChatView({ listingFilter, onOpenRoom, onLogin, onOpenSessions }: { listingFilter: { id: number; title: string } | null; onOpenRoom: (roomId: number) => void; onLogin: () => void; onOpenSessions: () => void }) {
   const { user } = useAuth();
   const allRooms = useChatRooms();
   // 서버 대화방 → 프론트 담당 화면 타입(ChatThread)
   const chatThreads = (allRooms ?? []).filter((room) => !listingFilter || (room.listingId === listingFilter.id && room.myRole === "seller")).map((room) => toChatThread(room));
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div><button className="icon-button"><Search size={19} /></button></header><main className="chat-main"><button className="ai-thread" onClick={onOpenSessions}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>{listingFilter ? `${listingFilter.title} 문의` : "분양권 거래"}</span><span>{chatThreads.length}개</span></div><div className="chat-list">{allRooms && chatThreads.length === 0 && <p className="ch-empty">{!user ? <>로그인하면 거래 채팅을 볼 수 있어요 <button className="text-action" onClick={onLogin}>로그인</button></> : listingFilter ? "아직 이 매물에 온 문의가 없어요" : "아직 대화가 없어요. 매물 상세에서 판매자와 채팅을 시작해보세요"}</p>}{chatThreads.map((thread) => { const last = thread.messages[thread.messages.length - 1]; const unread = thread.unread ?? 0; return <button key={thread.id} className="chat-row" onClick={() => thread.roomId !== undefined && onOpenRoom(thread.roomId)}><div className="thread-avatar seller-avatar">{avatarText(thread.name)}</div><div className="thread-copy"><div><strong>{thread.listingTitle} · {ROLE_LABELS[thread.myRole === "seller" ? "buyer" : "seller"]}</strong>{thread.status && <StatusPill tone={CHAT_STATUS_TONES[thread.status]}>{CHAT_STATUS_LABELS[thread.status]}</StatusPill>}</div><p>{last?.text ?? "아직 메시지가 없어요"}</p></div><div className="chat-meta"><span>{last?.time ?? ""}</span>{unread > 0 && <b>{unread > 9 ? "9+" : unread}</b>}</div></button>; })}</div><div className="chat-tip"><CircleHelp size={17} /><div><strong>거래 채팅은 안심번호로 보호돼요</strong><p>상대방과 주고받은 서류는 계약서류 점검 이력에 저장됩니다.</p></div></div></main></div>;
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">대화</p><h1>채팅</h1></div></header><main className="chat-main"><button className="ai-thread" onClick={onOpenSessions}><div className="thread-avatar ai-avatar"><Bot size={20} /></div><div className="thread-copy"><div><strong>AI 상담</strong><StatusPill tone="green">고정</StatusPill></div><p>내 조건에 맞는 청약과 거래를 찾아드릴게요.</p></div><span className="thread-time">지금</span><ChevronRight size={17} /></button><div className="chat-divider"><span>{listingFilter ? `${listingFilter.title} 문의` : "분양권 거래"}</span><span>{chatThreads.length}개</span></div><div className="chat-list">{allRooms && chatThreads.length === 0 && <p className="ch-empty">{!user ? <>로그인하면 거래 채팅을 볼 수 있어요 <button className="text-action" onClick={onLogin}>로그인</button></> : listingFilter ? "아직 이 매물에 온 문의가 없어요" : "아직 대화가 없어요. 매물 상세에서 판매자와 채팅을 시작해보세요"}</p>}{chatThreads.map((thread) => { const last = thread.messages[thread.messages.length - 1]; const unread = thread.unread ?? 0; return <button key={thread.id} className="chat-row" onClick={() => thread.roomId !== undefined && onOpenRoom(thread.roomId)}><div className="thread-avatar seller-avatar">{avatarText(thread.name)}</div><div className="thread-copy"><div><strong>{thread.listingTitle} · {ROLE_LABELS[thread.myRole === "seller" ? "buyer" : "seller"]}</strong>{thread.status && <StatusPill tone={CHAT_STATUS_TONES[thread.status]}>{CHAT_STATUS_LABELS[thread.status]}</StatusPill>}</div><p>{last?.text ?? "아직 메시지가 없어요"}</p></div><div className="chat-meta"><span>{last?.time ?? ""}</span>{unread > 0 && <b>{unread > 9 ? "9+" : unread}</b>}</div></button>; })}</div><div className="chat-tip"><CircleHelp size={17} /><div><strong>거래 채팅은 안심번호로 보호돼요</strong><p>상대방과 주고받은 서류는 계약서류 점검 이력에 저장됩니다.</p></div></div></main></div>;
 }
 
-function FavoritesView({ listings: favoriteListings, onOpenListing, onToggleLike, onOpenRegister, onOpenInquiries }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onToggleLike: (listing: Listing) => void; onOpenRegister: () => void; onOpenInquiries: (listing: Listing) => void }) {
+function MyListingsView({ listings: favoriteListings, onOpenListing, onOpenRegister, onOpenInquiries }: { listings: Listing[]; onOpenListing: (listing: Listing) => void; onOpenRegister: () => void; onOpenInquiries: (listing: Listing) => void }) {
   const chatRooms = useChatRooms();
-  const [segment, setSegment] = useState<"saved" | "posted">("saved");
-  const savedListings = favoriteListings.filter((listing) => listing.liked);
   const postedListings = favoriteListings.filter((listing) => listing.type === "trade");
   const postedListing = postedListings[0];
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 공간</p><h1>관심</h1></div><button className="icon-button"><MoreHorizontal size={20} /></button></header><main className="favorites-main"><div className="segment-control"><button className={segment === "saved" ? "active" : ""} onClick={() => setSegment("saved")}>찜한 매물 <span>{savedListings.length}</span></button><button className={segment === "posted" ? "active" : ""} onClick={() => setSegment("posted")}>내가 등록한 매물 <span>{postedListings.length}</span></button></div>{segment === "saved" ? <div className="favorite-stack">{savedListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => onToggleLike(listing)} />)}</div> : <div className="posted-view"><div className="posted-summary"><div><span className="eyebrow">판매 중인 매물</span><strong>{postedListings.length}건</strong><p>관심 있는 구매자와 대화를 시작해보세요.</p></div><div className="posted-chart"><span /><span /><span /><span /><span /></div></div>{postedListing && <div className="posted-card" onClick={() => onOpenListing(postedListing)}><div className="posted-card-image"><img src={postedListing.image} alt="" /><StatusPill tone="green">{postedListing.presale?.status === "review" ? "검토중" : "거래중"}</StatusPill></div><div><div className="listing-meta"><span>{postedListing.location}</span><span>조회 24</span></div><h3>{postedListing.title}</h3><strong className="listing-price">{postedListing.price}</strong><div className="posted-actions"><button onClick={(event) => { event.stopPropagation(); toast("등록 매물을 수정할 수 있어요"); }}>수정</button><button onClick={(event) => { event.stopPropagation(); toast("매물 통계를 확인했어요"); }}>통계 보기</button><button onClick={(event) => { event.stopPropagation(); onOpenInquiries(postedListing); }}>문의 {(chatRooms ?? []).filter((room) => room.listingId === postedListing.id && room.myRole === "seller").length}건</button></div></div></div>}</div>}<button className="add-listing-button" onClick={onOpenRegister}><Plus size={18} /><span>{segment === "posted" ? "새 매물 등록하기" : "내 매물 등록하기"}</span><ChevronRight size={16} /></button></main></div>;
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 공간</p><h1>내 매물 관리</h1></div></header><main className="favorites-main"><div className="posted-view"><div className="posted-summary"><div><span className="eyebrow">판매 중인 매물</span><strong>{postedListings.length}건</strong><p>관심 있는 구매자와 대화를 시작해보세요.</p></div><div className="posted-chart"><span /><span /><span /><span /><span /></div></div>{postedListing && <div className="posted-card" onClick={() => onOpenListing(postedListing)}><div className="posted-card-image"><img src={postedListing.image} alt="" /><StatusPill tone="green">{postedListing.presale?.status === "review" ? "검토중" : "거래중"}</StatusPill></div><div><div className="listing-meta"><span>{postedListing.location}</span><span>조회 24</span></div><h3>{postedListing.title}</h3><strong className="listing-price">{postedListing.price}</strong><div className="posted-actions"><button onClick={(event) => { event.stopPropagation(); toast("등록 매물을 수정할 수 있어요"); }}>수정</button><button onClick={(event) => { event.stopPropagation(); toast("매물 통계를 확인했어요"); }}>통계 보기</button><button onClick={(event) => { event.stopPropagation(); onOpenInquiries(postedListing); }}>문의 {(chatRooms ?? []).filter((room) => room.listingId === postedListing.id && room.myRole === "seller").length}건</button></div></div></div>}</div><button className="add-listing-button" onClick={onOpenRegister}><Plus size={18} /><span>새 매물 등록하기</span><ChevronRight size={16} /></button></main></div>;
 }
 
 function MyView({ onOpenProfile, onLogin, onVerifyIdentity }: { onOpenProfile: () => void; onLogin: () => void; onVerifyIdentity: () => void }) {
@@ -149,7 +205,7 @@ function MyView({ onOpenProfile, onLogin, onVerifyIdentity }: { onOpenProfile: (
     { icon: <FileCheck2 size={18} />, label: "계약서류 점검 이력", detail: "최근 점검 2건" },
     { icon: <WalletCards size={18} />, label: "멤버십 관리", detail: "집콕 프리미엄 이용 중" },
   ];
-  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 정보</p><h1>MY</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header><main className="my-main"><div className="profile-card"><div className="profile-top"><div className="profile-avatar">{shortName(profile.name)}</div><div><h2>{profile.name}님</h2><p>가입일 2026. 04. 18</p></div><button onClick={() => toast("프로필 편집을 준비 중이에요")}><MoreHorizontal size={19} /></button></div><div className="profile-divider" /><div className="profile-stats"><div><span>청약 가점</span><strong>62점</strong></div><div><span>관심지역</span><strong>{profile.interestRegions.length}곳</strong></div><div><span>찜한 매물</span><strong>{likedPresaleCount}건</strong></div></div></div><div className="my-section"><SectionHeader eyebrow="관리" title="내 설정" /><div className="my-menu">{menuItems.map((item) => <button key={item.label} className="my-menu-row" onClick={item.action ?? (item.label === "프로필 · 관심지역 설정" ? onOpenProfile : () => toast(`${item.label} 화면을 준비 중이에요`))}><div className="my-menu-icon">{item.icon}</div><div><strong>{item.label}</strong><span>{item.detail}</span></div><ChevronRight size={16} /></button>)}</div></div><div className="membership-card"><div className="membership-icon"><Sparkles size={18} /></div><div><span className="eyebrow">집콕 프리미엄</span><strong>계약서류 AI 점검을 무제한으로</strong><p>다음 결제일 2026. 12. 18</p></div><button onClick={() => toast("멤버십 관리 화면을 준비 중이에요")}><ChevronRight size={16} /></button></div><div className="my-footer"><span>버전 1.0.0</span><button>이용약관</button><button>개인정보처리방침</button>{user ? <button onClick={() => void logout().then(() => toast("로그아웃했어요"))}>로그아웃</button> : <button onClick={onLogin}>로그인</button>}</div></main></div>;
+  return <div className="screen-content"><header className="page-header"><div><p className="eyebrow">내 정보</p><h1>MY</h1></div></header><main className="my-main"><div className="profile-card"><div className="profile-top"><div className="profile-avatar">{shortName(profile.name)}</div><div><h2>{profile.name}님</h2><p>가입일 2026. 04. 18</p></div></div><div className="profile-divider" /><div className="profile-stats"><div><span>청약 가점</span><strong>62점</strong></div><div><span>관심지역</span><strong>{profile.interestRegions.length}곳</strong></div><div><span>찜한 매물</span><strong>{likedPresaleCount}건</strong></div></div></div><div className="my-section"><SectionHeader eyebrow="관리" title="내 설정" /><div className="my-menu">{menuItems.map((item) => <button key={item.label} className="my-menu-row" onClick={item.action ?? (item.label === "프로필 · 관심지역 설정" ? onOpenProfile : () => toast(`${item.label} 화면을 준비 중이에요`))}><div className="my-menu-icon">{item.icon}</div><div><strong>{item.label}</strong><span>{item.detail}</span></div><ChevronRight size={16} /></button>)}</div></div><div className="membership-card"><div className="membership-icon"><Sparkles size={18} /></div><div><span className="eyebrow">집콕 프리미엄</span><strong>계약서류 AI 점검을 무제한으로</strong><p>다음 결제일 2026. 12. 18</p></div><button onClick={() => toast("멤버십 관리 화면을 준비 중이에요")}><ChevronRight size={16} /></button></div><div className="my-footer"><span>버전 1.0.0</span><button onClick={() => toast("이용약관 화면을 준비 중이에요")}>이용약관</button><button onClick={() => toast("개인정보처리방침 화면을 준비 중이에요")}>개인정보처리방침</button>{user ? <button onClick={() => void logout().then(() => toast("로그아웃했어요"))}>로그아웃</button> : <button onClick={onLogin}>로그인</button>}</div></main></div>;
 }
 
 export default function Home() {
@@ -158,17 +214,24 @@ export default function Home() {
   const aiSessions = useAiSessions();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [showAiSessions, setShowAiSessions] = useState(false);
+  /** activeThread를 어디서 열었는지. "sessions"면 뒤로가기 때 대화 목록으로 돌아간다 */
+  const [threadOrigin, setThreadOrigin] = useState<"sessions" | null>(null);
+  const [showSavedListings, setShowSavedListings] = useState(false);
+  const [notificationsView, setNotificationsView] = useState<{ tab: NotificationCategory; showTabs: boolean } | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showIdentityVerification, setShowIdentityVerification] = useState(false);
   const [chatRoomId, setChatRoomId] = useState<number | null>(null);
   const [authPrompt, setAuthPrompt] = useState<{ reason: string; then?: () => void } | null>(null);
+  const [onboardingAfterAuth, setOnboardingAfterAuth] = useState<{ name?: string; then?: () => void } | null>(null);
   const { user } = useAuth();
   const [chatFilter, setChatFilter] = useState<{ id: number; title: string } | null>(null);
   const noticeListings = listings.filter((listing) => listing.type === "notice");
   const [homeListings, setHomeListings] = useState<Listing[]>(noticeListings);
   const [postedListings, setPostedListings] = useState<Listing[]>([]);
   const [likedIds, setLikedIds] = useState<number[]>(noticeListings.filter((listing) => listing.liked).map((listing) => listing.id));
+  const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
+  const savedListings = favoriteListings.filter((listing) => listing.liked);
 
   useEffect(() => {
     let active = true;
@@ -238,11 +301,13 @@ export default function Home() {
     if (selectedListing) toggleListingLike(selectedListing);
   };
   // AI 상담 버튼: 가장 최근 AI 대화를 연다(프론트 담당 동작)
-  const goChat = () => { setSelectedListing(null); setSelectedThreadId(aiSessions[0]?.id ?? null); };
+  const goChat = () => { setSelectedListing(null); setThreadOrigin(null); setSelectedThreadId(aiSessions[0]?.id ?? null); };
   const openAiSessions = () => setShowAiSessions(true);
+  const openAiSession = (sessionId: string) => { setShowAiSessions(false); setThreadOrigin("sessions"); setSelectedThreadId(sessionId); };
   const startNewAiSession = () => {
     const session = aiChatRepository.startSession();
     setShowAiSessions(false);
+    setThreadOrigin("sessions");
     setSelectedThreadId(session.id);
   };
   const changeTab = (tab: Tab) => { setChatFilter(null); setActiveTab(tab); };
@@ -298,10 +363,30 @@ export default function Home() {
         <AuthScreen
           reason={authPrompt.reason}
           onClose={() => setAuthPrompt(null)}
-          onDone={(loggedIn) => {
+          onDone={(loggedIn, mode) => {
             const next = authPrompt.then;
             setAuthPrompt(null);
+            if (mode === "signup") {
+              setOnboardingAfterAuth({ name: loggedIn.realName ?? loggedIn.nickname, then: next });
+              return;
+            }
             toast(`${loggedIn.nickname}님, 반가워요`);
+            next?.();
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (onboardingAfterAuth) {
+    return (
+      <div className="app-frame">
+        <OnboardingScreen
+          initialName={onboardingAfterAuth.name}
+          onComplete={(saved) => {
+            const next = onboardingAfterAuth.then;
+            setOnboardingAfterAuth(null);
+            toast(saved ? "환영해요! 맞춤 정보를 준비했어요" : "언제든 MY에서 프로필을 완성할 수 있어요");
             next?.();
           }}
         />
@@ -358,9 +443,36 @@ export default function Home() {
       <div className="app-frame">
         <ChatRoomView
           thread={activeThread}
-          onBack={() => setSelectedThreadId(null)}
+          onBack={() => {
+            setSelectedThreadId(null);
+            if (threadOrigin === "sessions") {
+              setThreadOrigin(null);
+              setShowAiSessions(true);
+            }
+          }}
           onSend={(text) => aiChatRepository.sendMessage(activeThread.id, text)}
         />
+      </div>
+    );
+  }
+
+  if (showSavedListings) {
+    return (
+      <div className="app-frame">
+        <SavedListingsView
+          listings={savedListings}
+          onOpenListing={openListing}
+          onToggleLike={toggleListingLike}
+          onBack={() => setShowSavedListings(false)}
+        />
+      </div>
+    );
+  }
+
+  if (notificationsView) {
+    return (
+      <div className="app-frame">
+        <NotificationListView initialTab={notificationsView.tab} showTabs={notificationsView.showTabs} onBack={() => setNotificationsView(null)} />
       </div>
     );
   }
@@ -370,7 +482,7 @@ export default function Home() {
       <div className="app-frame">
         <ChatSessionList
           sessions={aiSessions}
-          onOpenSession={(session) => { setShowAiSessions(false); setSelectedThreadId(session.id); }}
+          onOpenSession={(session) => openAiSession(session.id)}
           onNewSession={startNewAiSession}
           onBack={() => setShowAiSessions(false)}
         />
@@ -378,7 +490,6 @@ export default function Home() {
     );
   }
 
-  const favoriteListings = [...postedListings, ...homeListings.filter((listing) => listing.type === "notice")];
-  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <FavoritesView listings={favoriteListings} onOpenListing={openListing} onToggleLike={toggleListingLike} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
+  const content = activeTab === "home" ? <HomeView listings={homeListings} onOpenListing={openListing} onGoListings={goListings} onGoChat={goChat} onOpenSaved={() => setShowSavedListings(true)} onOpenNotifications={() => setNotificationsView({ tab: "listing", showTabs: true })} onOpenListingAlerts={() => setNotificationsView({ tab: "listing", showTabs: false })} onEditRegions={() => setShowProfile(true)} /> : activeTab === "listings" ? <ListingsView onOpenListing={openListing} /> : activeTab === "chat" ? <ChatView listingFilter={chatFilter} onOpenRoom={setChatRoomId} onOpenSessions={openAiSessions} onLogin={() => setAuthPrompt({ reason: "채팅하려면 로그인이 필요해요" })} /> : activeTab === "favorites" ? <MyListingsView listings={favoriteListings} onOpenListing={openListing} onOpenRegister={openRegister} onOpenInquiries={openInquiries} /> : <MyView onOpenProfile={() => setShowProfile(true)} onLogin={() => setAuthPrompt({ reason: "로그인하고 집콕을 이용해보세요" })} onVerifyIdentity={() => setShowIdentityVerification(true)} />;
   return <div className="app-frame">{content}<BottomNav active={activeTab} onChange={changeTab} /></div>;
 }

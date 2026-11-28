@@ -8,7 +8,10 @@ import { profileRepository } from "../api/profileRepository";
 import {
   AREA_OPTIONS,
   DEFAULT_PROFILE,
+  DEPENDENTS_OPTIONS,
+  HOME_TYPE_OPTIONS,
   INCOME_OPTIONS,
+  MOVE_IN_OPTIONS,
   NAME_MAX_LENGTH,
   SIDO_OPTIONS,
   SIGUNGU_MAX_LENGTH,
@@ -196,6 +199,14 @@ export function ProfileForm({
       </header>
 
       <main className="detail-body">
+        <div className="pf-profile-card">
+          <div className="profile-avatar">{(draft.name.trim() || DEFAULT_PROFILE.name).slice(-2)}</div>
+          <div>
+            <strong>{draft.name.trim() || DEFAULT_PROFILE.name}님</strong>
+            <span>{draft.residence.sido} {draft.residence.sigungu.trim() || "시군구 미입력"}</span>
+          </div>
+        </div>
+
         <div className="safety-note pf-privacy-note">
           <ShieldCheck size={19} />
           <div>
@@ -206,158 +217,231 @@ export function ProfileForm({
 
         <section className="detail-section">
           <SectionHeader eyebrow="필수" title="기본 정보" />
-          <div className="ps-field" ref={(el) => { fieldRefs.current.name = el; }}>
-            <label className="ps-label" htmlFor={nameId}>
-              이름(닉네임)
-            </label>
-            <label className="search-bar ps-input-bar" htmlFor={nameId}>
-              <input
-                id={nameId}
-                className="ps-input"
-                maxLength={NAME_MAX_LENGTH}
-                placeholder="예: 주예나"
-                value={draft.name}
-                onChange={(event) => update({ name: event.target.value })}
-              />
-            </label>
-            {errors.name && <p className="ps-hint ps-error">{errors.name}</p>}
-          </div>
-
-          <div className="ps-field" ref={(el) => { fieldRefs.current.residence = el; }}>
-            <span className="ps-label">사는 곳</span>
-            <div className="filter-row ps-chip-row pf-chip-wrap">
-              {SIDO_OPTIONS.map((sido) => (
-                <button
-                  key={sido}
-                  className={`filter-chip ${draft.residence.sido === sido ? "active" : ""}`}
-                  onClick={() => update({ residence: { ...draft.residence, sido } })}
-                  aria-pressed={draft.residence.sido === sido}
-                >
-                  {sido}
-                </button>
-              ))}
+          <div className="pf-card">
+            <div className="ps-field" ref={(el) => { fieldRefs.current.name = el; }}>
+              <label className="ps-label" htmlFor={nameId}>
+                이름(닉네임)
+              </label>
+              <label className="search-bar ps-input-bar" htmlFor={nameId}>
+                <input
+                  id={nameId}
+                  className="ps-input"
+                  maxLength={NAME_MAX_LENGTH}
+                  placeholder="예: 주예나"
+                  value={draft.name}
+                  onChange={(event) => update({ name: event.target.value })}
+                />
+              </label>
+              {errors.name && <p className="ps-hint ps-error">{errors.name}</p>}
             </div>
-            <label className="search-bar ps-input-bar pf-gap-top" htmlFor={sigunguId}>
-              <input
-                id={sigunguId}
-                className="ps-input"
-                maxLength={SIGUNGU_MAX_LENGTH}
-                placeholder="시군구 예: 서초구, 수원시"
-                value={draft.residence.sigungu}
-                onChange={(event) => update({ residence: { ...draft.residence, sigungu: event.target.value } })}
-              />
-            </label>
-            {errors.residence && <p className="ps-hint ps-error">{errors.residence}</p>}
-          </div>
 
-          <div className="ps-field" ref={(el) => { fieldRefs.current.interestRegions = el; }}>
-            <span className="ps-label">관심지역 (여러 곳 고를 수 있어요)</span>
-            <div className="filter-row ps-chip-row pf-chip-wrap">
-              {regionOptions.map((region) => {
-                const key = regionKey(region);
-                const selected = selectedRegionKeys.has(key);
-                return (
+            <div className="pf-divider" />
+
+            <div className="ps-field" ref={(el) => { fieldRefs.current.residence = el; }}>
+              <span className="ps-label">사는 곳</span>
+              <div className="filter-row ps-chip-row pf-chip-wrap">
+                {SIDO_OPTIONS.map((sido) => (
                   <button
-                    key={key}
-                    className={`filter-chip ${selected ? "active" : ""}`}
-                    onClick={() => toggleRegion(region)}
-                    aria-pressed={selected}
+                    key={sido}
+                    className={`filter-chip ${draft.residence.sido === sido ? "active" : ""}`}
+                    onClick={() => update({ residence: { ...draft.residence, sido } })}
+                    aria-pressed={draft.residence.sido === sido}
                   >
-                    {key}
+                    {sido}
                   </button>
-                );
-              })}
+                ))}
+              </div>
+              <label className="search-bar ps-input-bar pf-gap-top" htmlFor={sigunguId}>
+                <input
+                  id={sigunguId}
+                  className="ps-input"
+                  maxLength={SIGUNGU_MAX_LENGTH}
+                  placeholder="시군구 예: 서초구, 수원시"
+                  value={draft.residence.sigungu}
+                  onChange={(event) => update({ residence: { ...draft.residence, sigungu: event.target.value } })}
+                />
+              </label>
+              {errors.residence && <p className="ps-hint ps-error">{errors.residence}</p>}
             </div>
-            {errors.interestRegions ? (
-              <p className="ps-hint ps-error">{errors.interestRegions}</p>
-            ) : (
-              <p className="ps-hint">{draft.interestRegions.length}곳 골랐어요</p>
-            )}
+
+            <div className="pf-divider" />
+
+            <div className="ps-field" ref={(el) => { fieldRefs.current.interestRegions = el; }}>
+              <span className="ps-label">관심지역 (여러 곳 고를 수 있어요)</span>
+              <div className="filter-row ps-chip-row pf-chip-wrap">
+                {regionOptions.map((region) => {
+                  const key = regionKey(region);
+                  const selected = selectedRegionKeys.has(key);
+                  return (
+                    <button
+                      key={key}
+                      className={`filter-chip ${selected ? "active" : ""}`}
+                      onClick={() => toggleRegion(region)}
+                      aria-pressed={selected}
+                    >
+                      {key}
+                    </button>
+                  );
+                })}
+              </div>
+              {errors.interestRegions ? (
+                <p className="ps-hint ps-error">{errors.interestRegions}</p>
+              ) : (
+                <p className="ps-hint">{draft.interestRegions.length}곳 골랐어요</p>
+              )}
+            </div>
           </div>
         </section>
 
         <section className="detail-section">
           <SectionHeader eyebrow="선택 · 비워둬도 저장돼요" title="청약 자격" />
-          <div className="ps-grid-2">
-            <div ref={(el) => { fieldRefs.current.age = el; }}>
-              <NumberField label="나이" unit="세" value={age} onChange={setAge} maxLength={3} error={errors.age} />
+          <div className="pf-card">
+            <div className="ps-grid-2">
+              <div ref={(el) => { fieldRefs.current.age = el; }}>
+                <NumberField label="나이" unit="세" value={age} onChange={setAge} maxLength={3} error={errors.age} />
+              </div>
+              <div ref={(el) => { fieldRefs.current.homelessYears = el; }}>
+                <NumberField label="무주택 기간" unit="년" value={homelessYears} onChange={setHomelessYears} maxLength={2} error={errors.homelessYears} />
+              </div>
             </div>
-            <div ref={(el) => { fieldRefs.current.homelessYears = el; }}>
-              <NumberField label="무주택 기간" unit="년" value={homelessYears} onChange={setHomelessYears} maxLength={2} error={errors.homelessYears} />
+
+            <div className="pf-divider" />
+
+            <div className="ps-field">
+              <span className="ps-label">연소득 구간</span>
+              <div className="filter-row ps-chip-row pf-chip-wrap">
+                {INCOME_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`filter-chip ${draft.incomeBracket === option.value ? "active" : ""}`}
+                    onClick={() => update({ incomeBracket: draft.incomeBracket === option.value ? null : option.value })}
+                    aria-pressed={draft.incomeBracket === option.value}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <p className="ps-hint">금액은 받지 않아요. 한 번 더 누르면 선택이 풀려요</p>
             </div>
-          </div>
-          <div className="ps-field">
-            <span className="ps-label">연소득 구간</span>
-            <div className="filter-row ps-chip-row pf-chip-wrap">
-              {INCOME_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  className={`filter-chip ${draft.incomeBracket === option.value ? "active" : ""}`}
-                  onClick={() => update({ incomeBracket: draft.incomeBracket === option.value ? null : option.value })}
-                  aria-pressed={draft.incomeBracket === option.value}
-                >
-                  {option.label}
-                </button>
-              ))}
+
+            <div className="pf-divider" />
+
+            <div className="ps-field">
+              <span className="ps-label">청약통장 가입 기간</span>
+              <div className="filter-row ps-chip-row pf-chip-wrap">
+                {SUBSCRIPTION_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`filter-chip ${draft.subscriptionPeriod === option.value ? "active" : ""}`}
+                    onClick={() => update({ subscriptionPeriod: draft.subscriptionPeriod === option.value ? null : option.value })}
+                    aria-pressed={draft.subscriptionPeriod === option.value}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className="ps-hint">금액은 받지 않아요. 한 번 더 누르면 선택이 풀려요</p>
-          </div>
-          <div className="ps-field">
-            <span className="ps-label">청약통장 가입 기간</span>
-            <div className="filter-row ps-chip-row pf-chip-wrap">
-              {SUBSCRIPTION_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  className={`filter-chip ${draft.subscriptionPeriod === option.value ? "active" : ""}`}
-                  onClick={() => update({ subscriptionPeriod: draft.subscriptionPeriod === option.value ? null : option.value })}
-                  aria-pressed={draft.subscriptionPeriod === option.value}
-                >
-                  {option.label}
-                </button>
-              ))}
+
+            <div className="pf-divider" />
+
+            <div className="ps-field">
+              <span className="ps-label">부양가족수</span>
+              <div className="filter-row ps-chip-row pf-chip-wrap">
+                {DEPENDENTS_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`filter-chip ${draft.dependents === option.value ? "active" : ""}`}
+                    onClick={() => update({ dependents: draft.dependents === option.value ? null : option.value })}
+                    aria-pressed={draft.dependents === option.value}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
         <section className="detail-section">
           <SectionHeader eyebrow="선택 · 비워둬도 저장돼요" title="원하는 집" />
-          <div className="ps-field">
-            <span className="ps-label">관심 면적 (여러 개 고를 수 있어요)</span>
-            <div className="filter-row ps-chip-row pf-chip-wrap">
-              {AREA_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  className={`filter-chip ${draft.interestAreas.includes(option.value) ? "active" : ""}`}
-                  onClick={() => toggleArea(option.value)}
-                  aria-pressed={draft.interestAreas.includes(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
+          <div className="pf-card">
+            <div className="ps-field">
+              <span className="ps-label">관심 면적 (여러 개 고를 수 있어요)</span>
+              <div className="filter-row ps-chip-row pf-chip-wrap">
+                {AREA_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`filter-chip ${draft.interestAreas.includes(option.value) ? "active" : ""}`}
+                    onClick={() => toggleArea(option.value)}
+                    aria-pressed={draft.interestAreas.includes(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div ref={(el) => { fieldRefs.current.budget = el; }}>
-            <div className="ps-grid-2">
-              <NumberField
-                label="예산 최소"
-                unit="만원"
-                value={budgetMin}
-                onChange={setBudgetMin}
-                maxLength={7}
-                format
-                hint={budgetMinWon ? formatWon(budgetMinWon * MAN) : undefined}
-              />
-              <NumberField
-                label="예산 최대"
-                unit="만원"
-                value={budgetMax}
-                onChange={setBudgetMax}
-                maxLength={7}
-                format
-                hint={budgetMaxWon ? formatWon(budgetMaxWon * MAN) : undefined}
-              />
+
+            <div className="pf-divider" />
+
+            <div className="ps-field">
+              <span className="ps-label">희망 주거 형태</span>
+              <div className="filter-row ps-chip-row pf-chip-wrap">
+                {HOME_TYPE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`filter-chip ${draft.homeType === option.value ? "active" : ""}`}
+                    onClick={() => update({ homeType: draft.homeType === option.value ? null : option.value })}
+                    aria-pressed={draft.homeType === option.value}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            {errors.budget && <p className="ps-hint ps-error pf-budget-error">{errors.budget}</p>}
+
+            <div className="pf-divider" />
+
+            <div className="ps-field">
+              <span className="ps-label">입주 희망 시기</span>
+              <div className="filter-row ps-chip-row pf-chip-wrap">
+                {MOVE_IN_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`filter-chip ${draft.moveInTiming === option.value ? "active" : ""}`}
+                    onClick={() => update({ moveInTiming: draft.moveInTiming === option.value ? null : option.value })}
+                    aria-pressed={draft.moveInTiming === option.value}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="pf-divider" />
+
+            <div ref={(el) => { fieldRefs.current.budget = el; }}>
+              <div className="ps-grid-2">
+                <NumberField
+                  label="예산 최소"
+                  unit="만원"
+                  value={budgetMin}
+                  onChange={setBudgetMin}
+                  maxLength={7}
+                  format
+                  hint={budgetMinWon ? formatWon(budgetMinWon * MAN) : undefined}
+                />
+                <NumberField
+                  label="예산 최대"
+                  unit="만원"
+                  value={budgetMax}
+                  onChange={setBudgetMax}
+                  maxLength={7}
+                  format
+                  hint={budgetMaxWon ? formatWon(budgetMaxWon * MAN) : undefined}
+                />
+              </div>
+              {errors.budget && <p className="ps-hint ps-error pf-budget-error">{errors.budget}</p>}
+            </div>
           </div>
         </section>
       </main>

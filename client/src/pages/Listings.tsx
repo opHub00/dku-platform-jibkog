@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Layers, Map as MapIcon, MapPin, MoreHorizontal, Search, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, Layers, Map as MapIcon, MapPin, MoreHorizontal, Search, SlidersHorizontal, X } from "lucide-react";
 import { toast } from "sonner";
 import type { Listing, ListingType } from "@/types";
 import { listings } from "@/data/listings";
@@ -15,6 +15,44 @@ import { interestHeadline } from "@/features/profile/lib/profileText";
 type ViewMode = "map" | "list";
 
 type MapMode = "pins" | "regions";
+
+type RangeOption = { id: string; label: string; min?: number; max?: number };
+
+/** 가격대(거래가 = 분양가+프리미엄) 필터. 단위: 원 */
+const PRICE_RANGES: RangeOption[] = [
+  { id: "all", label: "전체" },
+  { id: "u10", label: "~10억", max: 1_000_000_000 },
+  { id: "10to20", label: "10~20억", min: 1_000_000_000, max: 2_000_000_000 },
+  { id: "20to30", label: "20~30억", min: 2_000_000_000, max: 3_000_000_000 },
+  { id: "30plus", label: "30억~", min: 3_000_000_000 },
+];
+
+/** 공급면적 필터. 단위: ㎡ */
+const AREA_RANGES: RangeOption[] = [
+  { id: "all", label: "전체" },
+  { id: "u60", label: "~60㎡", max: 60 },
+  { id: "60to85", label: "60~85㎡", min: 60, max: 85 },
+  { id: "85to102", label: "85~102㎡", min: 85, max: 102 },
+  { id: "102plus", label: "102㎡~", min: 102 },
+];
+
+type SortId = "latest" | "priceAsc" | "priceDesc";
+
+const SORT_OPTIONS: { id: SortId; label: string }[] = [
+  { id: "latest", label: "최신순" },
+  { id: "priceAsc", label: "낮은 가격순" },
+  { id: "priceDesc", label: "높은 가격순" },
+];
+
+function listingPrice(listing: Listing): number | null {
+  return listing.presale ? listing.presale.salePrice + listing.presale.premium : null;
+}
+
+function inRange(value: number, range: RangeOption): boolean {
+  if (range.min !== undefined && value < range.min) return false;
+  if (range.max !== undefined && value >= range.max) return false;
+  return true;
+}
 
 /** 좌표가 없는 매물용 기존 고정 위치 */
 const FALLBACK_PIN_POSITIONS = [
@@ -142,6 +180,10 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
   const [mapMode, setMapMode] = useState<MapMode>("pins");
   const [regionFilter, setRegionFilter] = useState<string | null>(null);
   const [regions, setRegions] = useState<DistrictMarker[]>([]);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [priceRangeId, setPriceRangeId] = useState("all");
+  const [areaRangeId, setAreaRangeId] = useState("all");
+  const [sortId, setSortId] = useState<SortId>("latest");
 
   useEffect(() => {
     let active = true;
@@ -170,15 +212,44 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
     () => [...tradeListings, ...listings.filter((item) => item.type === "notice")],
     [tradeListings],
   );
+  const priceRange = PRICE_RANGES.find((range) => range.id === priceRangeId) ?? PRICE_RANGES[0];
+  const areaRange = AREA_RANGES.find((range) => range.id === areaRangeId) ?? AREA_RANGES[0];
   const filteredListings = useMemo(
     () =>
-      allListings.filter(
-        (item) =>
-          (filter === "all" || item.type === filter) &&
-          (regionFilter === null || item.district === regionFilter),
-      ),
-    [filter, regionFilter, allListings],
+      allListings.filter((item) => {
+        if (filter !== "all" && item.type !== filter) return false;
+        if (regionFilter !== null && item.district !== regionFilter) return false;
+        if (priceRangeId !== "all") {
+          const price = listingPrice(item);
+          if (price === null || !inRange(price, priceRange)) return false;
+        }
+        if (areaRangeId !== "all") {
+          const area = item.presale?.area;
+          if (area === undefined || !inRange(area, areaRange)) return false;
+        }
+        return true;
+      }),
+    [filter, regionFilter, allListings, priceRangeId, priceRange, areaRangeId, areaRange],
   );
+  const sortedListings = useMemo(() => {
+    if (sortId === "latest") return filteredListings;
+    const sorted = [...filteredListings];
+    sorted.sort((a, b) => {
+      const priceA = listingPrice(a);
+      const priceB = listingPrice(b);
+      if (priceA === null && priceB === null) return 0;
+      if (priceA === null) return 1;
+      if (priceB === null) return -1;
+      return sortId === "priceAsc" ? priceA - priceB : priceB - priceA;
+    });
+    return sorted;
+  }, [filteredListings, sortId]);
+  const filtersActive = priceRangeId !== "all" || areaRangeId !== "all" || sortId !== "latest";
+  const resetFilters = () => {
+    setPriceRangeId("all");
+    setAreaRangeId("all");
+    setSortId("latest");
+  };
   const totalRegionCount = regions.reduce((sum, region) => sum + region.listingCount, 0);
 
   function selectRegion(key: string | null) {
@@ -192,15 +263,40 @@ export function ListingsView({ onOpenListing }: { onOpenListing: (listing: Listi
 
   return (
     <div className="screen-content">
-      <header className="page-header"><div><p className="eyebrow">내 관심지역</p><h1>{interestHeadline(profile.interestRegions)}</h1></div><button className="icon-button"><SlidersHorizontal size={19} /></button></header>
+      <header className="page-header"><div><p className="eyebrow">내 관심지역</p><h1>{interestHeadline(profile.interestRegions)}</h1></div></header>
       <main className="listing-main">
-        <div className="search-bar"><Search size={16} /><span>지역, 단지명으로 찾아보세요</span><button><SlidersHorizontal size={16} /></button></div>
+        <div className="search-bar"><Search size={16} /><span>지역, 단지명으로 찾아보세요</span><button className={filtersActive ? "is-active" : ""} onClick={() => setShowFilterSheet(true)}><SlidersHorizontal size={16} /></button></div>
         <div className="filter-row">{filterOptions.map((option) => <button key={option.id} className={`filter-chip ${filter === option.id ? "active" : ""}`} onClick={() => setFilter(option.id)}>{option.label}<span>{option.id === "all" ? allListings.length : allListings.filter((item) => item.type === option.id).length}</span></button>)}</div>
         <div className="filter-row ps-region-row"><button className={`filter-chip ${regionFilter === null ? "active" : ""}`} onClick={() => selectRegion(null)}>전체 지역<span>{totalRegionCount}건</span></button>{regions.map((region) => <button key={region.key} className={`filter-chip ${regionFilter === region.key ? "active" : ""}`} onClick={() => selectRegion(regionFilter === region.key ? null : region.key)}>{region.key}<span>{region.listingCount}건 · 평균 {formatWonShort(region.averagePremium)}</span></button>)}</div>
         <div className="listing-toolbar"><span><strong>{filteredListings.length}개</strong>의 매물이 있어요</span><div className="view-toggle"><button className={viewMode === "map" ? "active" : ""} onClick={() => setViewMode("map")}><MapIcon size={15} />지도</button><button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")}><MoreHorizontal size={15} />목록</button></div></div>
-        {viewMode === "map" ? <MapCanvas filteredListings={filteredListings} onOpenListing={onOpenListing} mode={mapMode} onModeChange={setMapMode} regions={regions} onSelectRegion={selectRegion} /> : <div className="listing-stack">{filteredListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} />)}</div>}
-        {viewMode === "map" && <div className="map-bottom-list"><div className="map-bottom-heading"><span>지도에서 보고 있는 매물</span><button onClick={() => setViewMode("list")}>목록으로 <ChevronRight size={14} /></button></div>{filteredListings.slice(0, 2).map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} compact />)}</div>}
+        {viewMode === "map" ? <MapCanvas filteredListings={sortedListings} onOpenListing={onOpenListing} mode={mapMode} onModeChange={setMapMode} regions={regions} onSelectRegion={selectRegion} /> : <div className="listing-stack">{sortedListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} />)}</div>}
+        {viewMode === "map" && <div className="map-bottom-list"><div className="map-bottom-heading"><span>지도에서 보고 있는 매물</span><button onClick={() => setViewMode("list")}>목록으로 <ChevronRight size={14} /></button></div><div className="horizontal-cards">{sortedListings.map((listing) => <ListingCard key={listing.id} listing={listing} onOpen={() => onOpenListing(listing)} onToggleLike={() => toast("관심 매물에 저장했어요")} compact />)}</div></div>}
       </main>
+      {showFilterSheet && (
+        <div className="sheet-backdrop" onClick={() => setShowFilterSheet(false)}>
+          <div className="bottom-sheet filter-sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-heading">
+              <div><span className="eyebrow">매물 필터</span><h2>원하는 조건을 선택하세요.</h2></div>
+              <button onClick={() => setShowFilterSheet(false)}><X size={18} /></button>
+            </div>
+            <div className="roi-field">
+              <span>가격대</span>
+              <div className="filter-row">{PRICE_RANGES.map((range) => <button key={range.id} className={`filter-chip ${priceRangeId === range.id ? "active" : ""}`} onClick={() => setPriceRangeId(range.id)}>{range.label}</button>)}</div>
+            </div>
+            <div className="roi-field">
+              <span>면적</span>
+              <div className="filter-row">{AREA_RANGES.map((range) => <button key={range.id} className={`filter-chip ${areaRangeId === range.id ? "active" : ""}`} onClick={() => setAreaRangeId(range.id)}>{range.label}</button>)}</div>
+            </div>
+            <div className="roi-field">
+              <span>정렬</span>
+              <div className="filter-row">{SORT_OPTIONS.map((option) => <button key={option.id} className={`filter-chip ${sortId === option.id ? "active" : ""}`} onClick={() => setSortId(option.id)}>{option.label}</button>)}</div>
+            </div>
+            <button className="upload-button" onClick={() => setShowFilterSheet(false)}>적용하기</button>
+            {filtersActive && <button className="text-action" style={{ justifyContent: "center", width: "100%", marginTop: 12 }} onClick={resetFilters}>필터 초기화</button>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
