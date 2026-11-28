@@ -10,6 +10,8 @@ const vite = await createViteServer({ configFile: false, server: { middlewareMod
 const { createAppApi } = await vite.ssrLoadModule("/server/api/app.ts");
 let requests = 0;
 let geocodes = 0;
+// 공고 상태는 오늘 날짜(한국 시간)로 계산하므로, 가짜 공고 날짜도 오늘 기준으로 만든다(고정 날짜면 날이 지나면 "접수 중" 검사가 깨진다)
+const kstDay = (offsetDays) => new Date(Date.now() + 9 * 3_600_000 + offsetDays * 86_400_000).toISOString().slice(0, 10);
 const fakeFetch = async (input) => {
   requests++;
   const url = new URL(input);
@@ -20,7 +22,7 @@ const fakeFetch = async (input) => {
     const data = region === "서울" ? Array.from({ length: 40 }, (_, index) => ({
       HOUSE_MANAGE_NO: `2026${String(index).padStart(6, "0")}`, PBLANC_NO: `2026${String(index).padStart(6, "0")}`,
       HOUSE_NM: `테스트 단지 ${index}`, HSSPLY_ADRES: "서울특별시 영등포구 문래동 27-1 일원",
-      RCRIT_PBLANC_DE: "2026-11-01", RCEPT_BGNDE: "2026-11-23", RCEPT_ENDDE: "2026-11-26",
+      RCRIT_PBLANC_DE: kstDay(-10), RCEPT_BGNDE: kstDay(-1), RCEPT_ENDDE: kstDay(2),
       TOT_SUPLY_HSHLDCO: 100, MVN_PREARNGE_YM: "203003",
     })) : [];
     return Response.json({ data, matchCount: data.length });
