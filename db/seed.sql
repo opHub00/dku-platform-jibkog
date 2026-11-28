@@ -1,4 +1,4 @@
-INSERT INTO users(id,nickname) VALUES (1,'예나'),(2,'서초판매자'),(3,'과천판매자');
+INSERT INTO users(id,nickname,email,password_hash) VALUES (1,'예나','legacy-1@invalid.example','disabled'),(2,'서초판매자','legacy-2@invalid.example','disabled'),(3,'과천판매자','legacy-3@invalid.example','disabled');
 INSERT INTO districts VALUES
  ('11650','서울','서초구'),('11500','서울','강서구'),('41290','경기','과천시'),('28260','인천','서구');
 INSERT INTO favorite_districts VALUES (1,'11650');

@@ -6,6 +6,7 @@ import { parseBounds, parseComplexQuery, parseNoticeQuery, parseRecentDays } fro
 import { syncCatalogExamples } from "../catalog/store";
 import { EventHub } from "../realtime";
 import { createJsonFileStore } from "../store/jsonFileStore";
+import { createPostgresStore } from "../store/postgresStore";
 import { buildSeedTables } from "../store/seed";
 import type { Store, UserRow } from "../store/types";
 import { ApiError, notFound, readJson, sendError, sendJson } from "./http";
@@ -13,7 +14,7 @@ import * as svc from "./services";
 
 /**
  * 앱 API(/api/auth, /api/complexes, /api/listings, /api/chats, /api/events, /api/catalog, /api/map).
- * 문서: docs/api.md, docs/api-catalog.md. 저장소는 Store 인터페이스만 쓴다(지금은 JSON 파일).
+ * 문서: docs/api.md, docs/api-catalog.md. 저장소는 Store 인터페이스만 쓴다(DATABASE_URL이 있으면 PostgreSQL, 없으면 JSON 파일).
  */
 
 type Ctx = {
@@ -42,8 +43,9 @@ function id(ctx: Ctx, key: string): number {
   return value;
 }
 
-export function createAppApi(options: { dataFile: string; log?: (message: string) => void; catalogTest?: { keys: { applyhome: string | null; kakao: string | null }; fetchImpl: typeof fetch; minIntervalMs?: number } }) {
-  const store: Store = createJsonFileStore(options.dataFile, () => buildSeedTables());
+export function createAppApi(options: { dataFile: string; databaseUrl?: string; dbDir?: string; seedDemo?: boolean; log?: (message: string) => void; catalogTest?: { keys: { applyhome: string | null; kakao: string | null }; fetchImpl: typeof fetch; minIntervalMs?: number } }) {
+  const postgres = options.databaseUrl ? createPostgresStore({ databaseUrl: options.databaseUrl, dbDir: options.dbDir!, seed: options.seedDemo ? buildSeedTables : undefined, log: options.log }) : null;
+  const store: Store = postgres ?? createJsonFileStore(options.dataFile, () => buildSeedTables());
   const hub = new EventHub();
   const routes: Route[] = [];
   const route = (method: string, path: string, handler: Handler) => routes.push({ method, ...compile(path), handler });
@@ -174,6 +176,7 @@ export function createAppApi(options: { dataFile: string; log?: (message: string
 
   return {
     store,
+    close: () => postgres?.close(),
     hub,
     /** connect 미들웨어. /api/ 중 앱 API가 아니면 next()로 넘긴다(/api/ai, /api/news는 기존 플러그인) */
     async middleware(req: IncomingMessage, res: ServerResponse, next: () => void): Promise<void> {

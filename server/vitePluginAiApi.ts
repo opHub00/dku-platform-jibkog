@@ -118,8 +118,11 @@ export function aiApiPlugin(options: { envDir: string }): Plugin {
         warn: (message) => server.config.logger.warn(message),
         error: (message) => server.config.logger.error(message),
       };
-      // 앱 API(로그인·매물·채팅·실시간). 데이터는 .data/jibkog.json(처음 실행 시 시드)
-      const appApi = createAppApi({ dataFile: path.join(options.envDir, ".data", "jibkog.json"), log: logger.error });
+      // DATABASE_URL selects shared PostgreSQL; otherwise use the local development store.
+      const databaseUrl = process.env.DATABASE_URL || readDotenvValue(options.envDir, "DATABASE_URL") || undefined;
+      const seedDemo = (process.env.DATABASE_SEED_DEMO || readDotenvValue(options.envDir, "DATABASE_SEED_DEMO")) === "1";
+      const appApi = createAppApi({ dataFile: path.join(options.envDir, ".data", "jibkog.json"), databaseUrl, dbDir: path.join(options.envDir, "db"), seedDemo, log: logger.error });
+      server.httpServer?.once("close", () => { void appApi.close()?.catch(error => logger.error(String(error))); });
       server.middlewares.use((req, res, next) => void appApi.middleware(req, res, next));
       server.middlewares.use(async (req, res, next) => {
         const url = req.url?.split("?")[0];
